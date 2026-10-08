@@ -1,0 +1,13 @@
+{
+  "name": "ai-detective",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Classroom game prototype: judge whether content was made by a person or by AI.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

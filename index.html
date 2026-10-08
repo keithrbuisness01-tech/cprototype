@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Detective</title>
+  <meta name="description" content="A classroom game where students judge whether content was made by a person or by AI.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="brand" type="button" data-go="home" aria-label="AI Detective home">
+      <span class="brand-mark" aria-hidden="true">?</span>
+      <span>AI Detective</span>
+    </button>
+    <div class="scoreboard" id="scoreboard" hidden>
+      <span class="score-chip you">You <strong id="score-you">0</strong></span>
+      <span class="score-chip fib">Fib <strong id="score-fib">0</strong></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Home -->
+    <section class="screen" id="screen-home" aria-labelledby="home-title">
+      <div class="hero">
+        <div class="fib-intro">
+          <div class="fib-avatar" data-fib="smug"></div>
+          <blockquote class="speech">
+            I'm <strong>Fib</strong>. I set up ten cases for you. Some were made by AI. Some are real things I'm
+            hoping you'll doubt. Bet you can't tell which is which.
+          </blockquote>
+        </div>
+        <h1 id="home-title">AI Detective</h1>
+        <p class="lead">Ten cases. Six detective questions. You get to ask three per case. Then decide: made by a person, or made by AI?</p>
+        <div class="class-code">
+          <label for="class-code">Class code <span class="muted">(from your teacher)</span></label>
+          <input id="class-code" name="class-code" autocomplete="off" spellcheck="false" maxlength="20" placeholder="MY-CLASS">
+        </div>
+        <div class="actions">
+          <button class="btn primary big" type="button" id="start-btn">Open the first case</button>
+          <button class="btn ghost" type="button" data-go="report">Teacher: class report</button>
+        </div>
+        <p class="fine-print">No names, no accounts, no live AI. Only anonymous class totals are kept.</p>
+      </div>
+    </section>
+
+    <!-- How to play -->
+    <section class="screen" id="screen-howto" aria-labelledby="howto-title" hidden>
+      <h2 id="howto-title">How a case works</h2>
+      <ol class="steps">
+        <li><strong>Read the case file.</strong> Something someone saw, heard or was sent.</li>
+        <li><strong>Pick three of the six detective questions.</strong> Each one reveals a clue. Some clues help, some don't, and some are meant to mislead you.</li>
+        <li><strong>Give your verdict:</strong> made by a person, or made by AI.</li>
+        <li><strong>Fib reveals the answer</strong> and you get the lesson.</li>
+      </ol>
+      <p>You score a point for every right verdict. Fib scores one for every wrong one.</p>
+      <p class="ranks-line"><span>0–3 Rookie</span><span>4–6 Detective</span><span>7–8 Inspector</span><span>9–10 Chief</span></p>
+      <div class="actions">
+        <button class="btn primary big" type="button" id="howto-go">Let's go</button>
+      </div>
+    </section>
+
+    <!-- A case -->
+    <section class="screen" id="screen-case" aria-labelledby="case-title" hidden>
+      <div class="progress" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+      <article class="case-file">
+        <p class="case-tag" id="case-tag">Case 1 of 10</p>
+        <h2 id="case-title">Case title</h2>
+        <p class="case-setup" id="case-setup"></p>
+      </article>
+
+      <div class="picks-head">
+        <h3>Ask three questions</h3>
+        <p class="pick-count" id="pick-count" aria-live="polite">3 left</p>
+      </div>
+      <ul class="questions" id="questions"></ul>
+
+      <div class="verdict" id="verdict" hidden>
+        <h3>Your verdict</h3>
+        <div class="verdict-buttons">
+          <button class="btn verdict-btn person" type="button" data-guess="person">Made by a person</button>
+          <button class="btn verdict-btn ai" type="button" data-guess="ai">Made by AI</button>
+        </div>
+      </div>
+
+      <div class="reveal" id="reveal" hidden aria-live="polite">
+        <div class="result-banner" id="result-banner"></div>
+        <div class="fib-line">
+          <div class="fib-avatar" id="reveal-fib"></div>
+          <blockquote class="speech" id="reveal-speech"></blockquote>
+        </div>
+        <p class="answer"><strong>Answer:</strong> <span id="reveal-verdict"></span></p>
+        <p class="lesson"><strong>Lesson:</strong> <span id="reveal-lesson"></span></p>
+        <details class="other-clues">
+          <summary>Clues you didn't check</summary>
+          <ul id="other-clues"></ul>
+        </details>
+        <div class="actions">
+          <button class="btn primary big" type="button" id="next-btn">Next case</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- End of run -->
+    <section class="screen" id="screen-end" aria-labelledby="end-title" hidden>
+      <div class="end-head">
+        <p class="eyebrow">Final score</p>
+        <h2 id="end-title"><span id="end-score">0</span> out of <span id="end-total">10</span></h2>
+        <p class="rank-badge" id="end-rank">Rookie</p>
+      </div>
+      <div class="fib-line">
+        <div class="fib-avatar" id="end-fib"></div>
+        <blockquote class="speech" id="end-speech"></blockquote>
+      </div>
+      <h3>Your cases</h3>
+      <ol class="recap" id="recap"></ol>
+      <div class="actions">
+        <button class="btn primary" type="button" id="again-btn">Play again</button>
+        <button class="btn ghost" type="button" data-go="home">Back to start</button>
+      </div>
+    </section>
+
+    <!-- Teacher report -->
+    <section class="screen report" id="screen-report" aria-labelledby="report-title" hidden>
+      <div class="report-head">
+        <div>
+          <p class="eyebrow">Teacher view</p>
+          <h2 id="report-title">Class report</h2>
+        </div>
+        <form class="report-form" id="report-form">
+          <label for="report-class">Class code</label>
+          <input id="report-class" autocomplete="off" spellcheck="false" maxlength="20">
+          <button class="btn primary small" type="submit">Show</button>
+        </form>
+      </div>
+      <p class="report-mode" id="report-mode"></p>
+      <div id="report-body"></div>
+      <div class="actions report-actions">
+        <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
+        <button class="btn ghost small" type="button" id="report-print">Print</button>
+        <button class="btn ghost small danger" type="button" id="report-reset" hidden>Clear this device's totals</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/cases.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
