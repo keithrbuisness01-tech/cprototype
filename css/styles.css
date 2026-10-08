@@ -101,7 +101,7 @@ h1:focus, h2:focus { outline: none; }
 /* ---- Top bar ---- */
 .topbar {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 5;
   display: flex;
   align-items: center;
@@ -385,6 +385,27 @@ input {
 .bar-value { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
 .empty { padding: 24px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); margin-top: 16px; }
 .error { color: var(--wrong); }
+
+/* ---- Confirm ---- */
+.confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.confirm-box {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.confirm-box .actions { margin-top: 12px; }
 
 @media (max-width: 640px) {
   body { font-size: 17px; }

@@ -43,6 +43,32 @@
     el.dataset.fib = mood;
   }
 
+  // In-page confirm, because embedded viewers block the browser's own dialogs.
+  function ask(message, yesLabel) {
+    return new Promise((resolve) => {
+      const box = $('confirm');
+      const opener = document.activeElement;
+      $('confirm-msg').textContent = message;
+      $('confirm-yes').textContent = yesLabel;
+      box.hidden = false;
+      $('confirm-no').focus();
+      function done(answer) {
+        box.hidden = true;
+        $('confirm-yes').removeEventListener('click', yes);
+        $('confirm-no').removeEventListener('click', no);
+        box.removeEventListener('keydown', key);
+        if (opener && opener.focus) opener.focus();
+        resolve(answer);
+      }
+      const yes = () => done(true);
+      const no = () => done(false);
+      const key = (e) => { if (e.key === 'Escape') done(false); };
+      $('confirm-yes').addEventListener('click', yes);
+      $('confirm-no').addEventListener('click', no);
+      box.addEventListener('keydown', key);
+    });
+  }
+
   // ---- Navigation ------------------------------------------------------------
 
   function show(name) {
@@ -62,13 +88,13 @@
     show('home');
   }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-go]');
     if (!target) return;
     const where = target.dataset.go;
     if (where === 'home') {
       if (run && !Game.isOver(run) && run.results.length > 0 &&
-          !window.confirm('Leave this game? Your progress in this run will be lost.')) return;
+          !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return;
       run = null;
       goHome();
     } else {
@@ -382,9 +408,8 @@
     loadReport();
   });
   $('report-refresh').addEventListener('click', loadReport);
-  $('report-print').addEventListener('click', () => window.print());
-  $('report-reset').addEventListener('click', () => {
-    if (!window.confirm('Clear the totals for ' + reportClass + ' on this device?')) return;
+  $('report-reset').addEventListener('click', async () => {
+    if (!(await ask('Clear the totals for ' + reportClass + ' on this device? This cannot be undone.', 'Clear totals'))) return;
     Store.resetLocal(reportClass);
     loadReport();
   });

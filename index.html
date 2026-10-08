@@ -137,11 +137,20 @@
       <div id="report-body"></div>
       <div class="actions report-actions">
         <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
-        <button class="btn ghost small" type="button" id="report-print">Print</button>
         <button class="btn ghost small danger" type="button" id="report-reset" hidden>Clear this device's totals</button>
       </div>
     </section>
   </main>
+
+  <div class="confirm" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg" hidden>
+    <div class="confirm-box">
+      <p id="confirm-msg"></p>
+      <div class="actions">
+        <button class="btn primary" type="button" id="confirm-yes">OK</button>
+        <button class="btn ghost" type="button" id="confirm-no">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="js/cases.js"></script>
   <script src="js/game.js"></script>
