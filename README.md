@@ -35,6 +35,21 @@ or the file.
 folder on any static host such as GitHub Pages. The game plays the same way, but
 the class report only counts games played in that browser.
 
+## Design
+
+The look is a white case board, with ink outlines and hard offset shadows like
+evidence cards pinned to a board. The colors are two teams:
+
+- **Neon blue is the player:** your score, the questions you picked, and the
+  "Case cracked" banner.
+- **Deep purple is Fib:** his score and speech bubbles, plus a neon purple
+  "Fooled!" banner when he takes the point.
+- **Pink only decorates** (Fib's hat band) and never carries text.
+
+Fonts come from Google Fonts: Bungee for headings, Atkinson Hyperlegible for
+body text (designed to be easy to read), and Courier Prime for case files and
+clues. Without internet, the page falls back to system fonts.
+
 ## Test
 
 ```sh

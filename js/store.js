@@ -69,6 +69,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ classCode, event }),
         });
+        await res.text();
         if (res.ok) return;
       } catch (e) {
         // Server went away mid-game: keep the count on this device instead.

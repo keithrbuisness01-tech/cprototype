@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Detective</title>
   <meta name="description" content="A classroom game where students judge whether content was made by a person or by AI.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bungee&family=Courier+Prime:wght@400;700&display=swap">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="topbar">
     <button class="brand" type="button" data-go="home" aria-label="AI Detective home">
-      <span class="brand-mark" aria-hidden="true">?</span>
-      <span>AI Detective</span>
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">AI Detective</span>
     </button>
     <div class="scoreboard" id="scoreboard" hidden>
-      <span class="score-chip you">You <strong id="score-you">0</strong></span>
-      <span class="score-chip fib">Fib <strong id="score-fib">0</strong></span>
+      <span class="score-side you"><span class="score-name">You</span> <strong id="score-you">0</strong></span>
+      <span class="score-side fib"><strong id="score-fib">0</strong> <span class="score-name">Fib</span></span>
     </div>
   </header>
 
@@ -23,15 +26,10 @@
     <!-- Home -->
     <section class="screen" id="screen-home" aria-labelledby="home-title">
       <div class="hero">
-        <div class="fib-intro">
-          <div class="fib-avatar" data-fib="smug"></div>
-          <blockquote class="speech">
-            I'm <strong>Fib</strong>. I set up ten cases for you. Some were made by AI. Some are real things I'm
-            hoping you'll doubt. Bet you can't tell which is which.
-          </blockquote>
-        </div>
-        <h1 id="home-title">AI Detective</h1>
-        <p class="lead">Ten cases. Six detective questions. You get to ask three per case. Then decide: made by a person, or made by AI?</p>
+        <div class="hero-copy">
+          <p class="kicker">10 cases <span aria-hidden="true">/</span> 6 questions <span aria-hidden="true">/</span> 1 rival</p>
+          <h1 id="home-title"><span class="t-ai">AI</span> <span class="t-det">Detective</span></h1>
+          <p class="lead">Read each case. Ask three of the six detective questions. Then decide: made by a person, or made by AI?</p>
         <div class="class-code">
           <label for="class-code">Class code <span class="muted">(from your teacher)</span></label>
           <input id="class-code" name="class-code" autocomplete="off" spellcheck="false" maxlength="20" placeholder="MY-CLASS">
@@ -40,7 +38,15 @@
           <button class="btn primary big" type="button" id="start-btn">Open the first case</button>
           <button class="btn ghost" type="button" data-go="report">Teacher: class report</button>
         </div>
-        <p class="fine-print">No names, no accounts, no live AI. Only anonymous class totals are kept.</p>
+          <p class="fine-print">No names, no accounts, no live AI. Only anonymous class totals are kept.</p>
+        </div>
+        <div class="hero-fib">
+          <div class="fib-avatar big" data-fib="smug"></div>
+          <blockquote class="speech">
+            I'm <strong>Fib</strong>. I set up ten cases for you. Some were made by AI. Some are real things I'm
+            hoping you'll doubt. Bet you can't tell which is which.
+          </blockquote>
+        </div>
       </div>
     </section>
 

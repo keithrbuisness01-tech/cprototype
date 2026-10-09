@@ -11,28 +11,39 @@
   let classCode = Store.savedClassCode();
 
   // ---- Fib -----------------------------------------------------------------
-  // A placeholder drawing until the illustrator's art exists.
+  // A placeholder drawing until the illustrator's art exists: a purple
+  // prankster in a top hat and a neon-blue bandit mask.
   const MOUTHS = {
-    smug: 'M38 66 Q50 74 64 62',
-    gleeful: 'M34 62 Q50 82 66 62 Z',
-    annoyed: 'M38 70 Q50 62 62 70',
+    smug: 'M48 97 Q62 104 76 93',
+    gleeful: 'M44 94 Q60 113 76 94 Z',
+    annoyed: 'M48 102 Q60 93 72 102',
   };
   const BROWS = {
-    smug: '<path d="M30 38 L44 42" /><path d="M56 40 L70 32" />',
-    gleeful: '<path d="M30 36 L44 38" /><path d="M56 38 L70 36" />',
-    annoyed: '<path d="M30 34 L44 42" /><path d="M56 42 L70 34" />',
+    smug: '<path d="M40 59 L52 61" /><path d="M68 58 L80 50" />',
+    gleeful: '<path d="M40 56 L52 53" /><path d="M68 53 L80 56" />',
+    annoyed: '<path d="M40 52 L52 60" /><path d="M68 60 L80 52" />',
   };
+  // Where the pupils look, as an offset from the centre of each eye.
+  const GAZE = { smug: [2.5, 0], gleeful: [0, -0.5], annoyed: [-1, -1.5] };
 
   function fibSvg(mood) {
     const filled = mood === 'gleeful';
+    const [gx, gy] = GAZE[mood];
     return (
-      '<svg viewBox="0 0 100 100" role="img" aria-label="Fib looks ' + mood + '">' +
-      '<path class="fib-hat" d="M22 30 L50 4 L78 30 Z" />' +
-      '<circle class="fib-hat-pom" cx="50" cy="6" r="5" />' +
-      '<circle class="fib-head" cx="50" cy="56" r="34" />' +
+      '<svg viewBox="0 0 120 124" role="img" aria-label="Fib looks ' + mood + '">' +
+      '<circle class="fib-ring" cx="60" cy="78" r="42" />' +
+      '<circle class="fib-head" cx="60" cy="78" r="35" />' +
+      '<g transform="rotate(-9 60 44)">' +
+      '<rect class="fib-hat" x="41" y="12" width="38" height="31" rx="4" />' +
+      '<rect class="fib-band" x="41" y="34" width="38" height="7" />' +
+      '<rect class="fib-hat" x="29" y="41" width="62" height="8" rx="4" />' +
+      '</g>' +
       '<g class="fib-brow">' + BROWS[mood] + '</g>' +
-      '<circle class="fib-eye" cx="38" cy="50" r="4" />' +
-      '<circle class="fib-eye" cx="62" cy="50" r="4" />' +
+      '<path class="fib-mask" d="M24 66 L33 69 Q60 58 87 69 L96 66 L94 78 L89 76 Q88 88 77 88 Q67 88 60 80 Q53 88 43 88 Q32 88 31 76 L26 78 Z" />' +
+      '<ellipse class="fib-eye" cx="45" cy="75" rx="6.5" ry="5.5" />' +
+      '<ellipse class="fib-eye" cx="75" cy="75" rx="6.5" ry="5.5" />' +
+      '<circle class="fib-pupil" cx="' + (45 + gx) + '" cy="' + (75 + gy) + '" r="2.8" />' +
+      '<circle class="fib-pupil" cx="' + (75 + gx) + '" cy="' + (75 + gy) + '" r="2.8" />' +
       '<path class="fib-mouth' + (filled ? ' filled' : '') + '" d="' + MOUTHS[mood] + '" />' +
       '</svg>'
     );
@@ -194,7 +205,11 @@
 
     const banner = $('result-banner');
     banner.className = 'result-banner ' + (result.correct ? 'right' : 'wrong');
-    banner.textContent = result.correct ? 'You got it. Point to you.' : 'Fooled! Point to Fib.';
+    banner.innerHTML = '';
+    banner.append(
+      el('span', 'stamp', result.correct ? 'Case cracked' : 'Fooled!'),
+      el('span', 'stamp-note', result.correct ? 'Point to you.' : 'Point to Fib.')
+    );
     setFib($('reveal-fib'), result.correct ? 'annoyed' : 'gleeful');
     $('reveal-speech').textContent = result.correct ? c.fibRight : c.fibWrong;
     $('reveal-verdict').textContent = c.verdict;
