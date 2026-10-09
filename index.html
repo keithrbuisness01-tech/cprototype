@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bungee&family=Courier+Prime:wght@400;700&display=swap">
   <link rel="stylesheet" href="css/styles.css">
+  <script src="js/options.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -36,7 +37,6 @@
         </div>
         <div class="actions">
           <button class="btn primary big" type="button" id="start-btn">Open the first case</button>
-          <button class="btn ghost" type="button" data-go="report">Teacher: class report</button>
         </div>
           <p class="fine-print">No names, no accounts, no live AI. Only anonymous class totals are kept.</p>
         </div>
@@ -140,6 +140,7 @@
         </form>
       </div>
       <p class="report-mode" id="report-mode"></p>
+      <p class="report-signin">Teacher sign-in isn't built yet. Until it is, anyone with the class code can open this report.</p>
       <div id="report-body"></div>
       <div class="actions report-actions">
         <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
@@ -158,9 +159,63 @@
     </div>
   </div>
 
+  <!-- Options: a tab in the bottom-right corner opens the panel. -->
+  <button class="options-tab" id="options-tab" type="button" aria-expanded="false" aria-controls="options-panel">
+    <span class="options-tab-icon" aria-hidden="true"></span>
+    <span>Options</span>
+  </button>
+  <div class="options-scrim" id="options-scrim" hidden></div>
+  <section class="options-panel" id="options-panel" role="dialog" aria-modal="true" aria-labelledby="options-title" hidden>
+    <div class="options-head">
+      <h2 id="options-title">Options</h2>
+      <button class="options-close" id="options-close" type="button" aria-label="Close options">&times;</button>
+    </div>
+
+    <fieldset class="opt-group">
+      <legend>Text size</legend>
+      <div class="segmented">
+        <label><input type="radio" name="opt-textSize" value="standard"><span><b class="ts ts-1">Aa</b>Standard</span></label>
+        <label><input type="radio" name="opt-textSize" value="large"><span><b class="ts ts-2">Aa</b>Large</span></label>
+        <label><input type="radio" name="opt-textSize" value="xlarge"><span><b class="ts ts-3">Aa</b>Extra large</span></label>
+      </div>
+    </fieldset>
+
+    <div class="opt-switches">
+      <div class="opt-switch">
+        <label for="opt-sound">Sound <small>Clicks, a chime and Fib's "wah-wah"</small></label>
+        <input type="checkbox" role="switch" id="opt-sound" data-option="sound">
+      </div>
+      <div class="opt-switch">
+        <label for="opt-reducedMotion">Reduced motion <small>Stops wobbles, spins and stamps</small></label>
+        <input type="checkbox" role="switch" id="opt-reducedMotion" data-option="reducedMotion">
+      </div>
+      <div class="opt-switch">
+        <label for="opt-highContrast">High contrast <small>Black and white, thicker outlines</small></label>
+        <input type="checkbox" role="switch" id="opt-highContrast" data-option="highContrast">
+      </div>
+    </div>
+
+    <fieldset class="opt-group" id="opt-theme-group">
+      <legend>Color theme</legend>
+      <p class="opt-note" id="opt-theme-note" hidden>High contrast is on, so the color theme is paused.</p>
+      <div class="theme-grid">
+        <label><input type="radio" name="opt-theme" value="case-board"><span><i class="swatch" style="--a:#00c8ff;--b:#3d1a78;--c:#ffffff"></i>Case Board</span></label>
+        <label><input type="radio" name="opt-theme" value="pink-blue"><span><i class="swatch" style="--a:#00c8ff;--b:#a3166f;--c:#ffffff"></i>Pink &amp; Blue</span></label>
+        <label><input type="radio" name="opt-theme" value="night-shift"><span><i class="swatch" style="--a:#00c8ff;--b:#7a3cf0;--c:#14102a"></i>Night Shift</span></label>
+        <label><input type="radio" name="opt-theme" value="calm"><span><i class="swatch" style="--a:#8fd8ef;--b:#4a3a75;--c:#faf9fc"></i>Calm</span></label>
+      </div>
+    </fieldset>
+
+    <p class="opt-note">Saved on this device only.</p>
+    <div class="options-foot">
+      <button class="text-link" type="button" id="teacher-signin">Teacher sign-in</button>
+    </div>
+  </section>
+
   <script src="js/cases.js"></script>
   <script src="js/game.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

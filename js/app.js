@@ -3,6 +3,8 @@
   const { QUESTIONS, CASES } = window.AIDetectiveData;
   const Game = window.AIDetectiveGame;
   const Store = window.AIDetectiveStore;
+  const Options = window.AIDetectiveOptions;
+  const Sound = window.AIDetectiveSound;
 
   const $ = (id) => document.getElementById(id);
   const screens = ['home', 'howto', 'case', 'end', 'report'];
@@ -99,22 +101,30 @@
     show('home');
   }
 
-  document.addEventListener('click', async (e) => {
-    const target = e.target.closest('[data-go]');
-    if (!target) return;
-    const where = target.dataset.go;
-    if (where === 'home') {
-      if (run && !Game.isOver(run) && run.results.length > 0 &&
-          !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return;
-      run = null;
-      goHome();
-    } else {
-      if (where === 'report' && !$('screen-home').hidden) {
-        reportClass = Store.normalizeClassCode($('class-code').value);
-      }
+  // Home and the teacher report both leave the current game.
+  async function navigate(where) {
+    if (where !== 'home' && where !== 'report') {
       show(where);
+      return;
     }
+    if (run && !Game.isOver(run) && run.results.length > 0 &&
+        !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return;
+    if (where === 'report' && !$('screen-home').hidden) {
+      reportClass = Store.normalizeClassCode($('class-code').value);
+    }
+    run = null;
+    if (where === 'home') goHome();
+    else show('report');
+  }
+
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-go]');
+    if (target) navigate(target.dataset.go);
   });
+
+  function scrollToNode(node, block) {
+    node.scrollIntoView({ behavior: Options.get().reducedMotion ? 'auto' : 'smooth', block });
+  }
 
   // ---- A run -----------------------------------------------------------------
 
@@ -187,10 +197,11 @@
     const clue = li.querySelector('.clue');
     clue.textContent = CASES[run.index].clues[id];
     clue.hidden = false;
+    Sound.play('clue');
     updatePickState();
     if (Game.readyToGuess(run)) {
       $('verdict').hidden = false;
-      $('verdict').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      scrollToNode($('verdict'), 'nearest');
     }
   }
 
@@ -205,6 +216,7 @@
 
     const banner = $('result-banner');
     banner.className = 'result-banner ' + (result.correct ? 'right' : 'wrong');
+    Sound.play(result.correct ? 'right' : 'wrong');
     banner.innerHTML = '';
     banner.append(
       el('span', 'stamp', result.correct ? 'Case cracked' : 'Fooled!'),
@@ -230,7 +242,7 @@
     $('next-btn').textContent = run.index + 1 >= CASES.length ? 'See my rank' : 'Next case';
     $('verdict').hidden = true;
     $('reveal').hidden = false;
-    $('reveal').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollToNode($('reveal'), 'start');
   }
 
   function onNext() {
@@ -427,6 +439,79 @@
     if (!(await ask('Clear the totals for ' + reportClass + ' on this device? This cannot be undone.', 'Clear totals'))) return;
     Store.resetLocal(reportClass);
     loadReport();
+  });
+
+  // ---- Options panel ---------------------------------------------------------
+
+  const panel = $('options-panel');
+  const tab = $('options-tab');
+
+  function syncOptions() {
+    const o = Options.get();
+    for (const input of panel.querySelectorAll('input[type="radio"]')) {
+      const key = input.name.replace('opt-', '');
+      input.checked = o[key] === input.value;
+    }
+    for (const input of panel.querySelectorAll('input[data-option]')) {
+      input.checked = o[input.dataset.option];
+    }
+    $('opt-theme-group').disabled = o.highContrast;
+    $('opt-theme-note').hidden = !o.highContrast;
+  }
+
+  function openOptions() {
+    syncOptions();
+    panel.hidden = false;
+    $('options-scrim').hidden = false;
+    tab.setAttribute('aria-expanded', 'true');
+    $('options-close').focus();
+  }
+
+  function closeOptions(returnFocus) {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    $('options-scrim').hidden = true;
+    tab.setAttribute('aria-expanded', 'false');
+    if (returnFocus) tab.focus();
+  }
+
+  tab.addEventListener('click', openOptions);
+  $('options-close').addEventListener('click', () => closeOptions(true));
+  $('options-scrim').addEventListener('click', () => closeOptions(true));
+
+  panel.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeOptions(true);
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    // Keep keyboard focus inside the open panel.
+    const focusable = Array.from(panel.querySelectorAll('button, input')).filter((n) => !n.disabled && n.offsetParent !== null);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
+  panel.addEventListener('change', (e) => {
+    const input = e.target;
+    if (input.type === 'radio') {
+      Options.set(input.name.replace('opt-', ''), input.value);
+    } else if (input.dataset.option) {
+      Options.set(input.dataset.option, input.checked);
+      if (input.dataset.option === 'sound' && input.checked) Sound.play('right');
+    }
+    syncOptions();
+  });
+
+  $('teacher-signin').addEventListener('click', () => {
+    closeOptions(false);
+    navigate('report');
   });
 
   // ---- Boot --------------------------------------------------------------------

@@ -35,6 +35,23 @@ or the file.
 folder on any static host such as GitHub Pages. The game plays the same way, but
 the class report only counts games played in that browser.
 
+## Options
+
+A tab in the bottom-right corner opens the Options panel on every screen:
+
+- **Text size:** Standard, Large or Extra large.
+- **Sound:** off by default. Three short effects are made in the browser, with
+  no audio files: a tick when a clue opens, a chime when you're right, and
+  Fib's "wah-wah" when you're fooled.
+- **Reduced motion:** starts matched to the device's own setting.
+- **High contrast:** black and white with thicker outlines. It overrides the
+  color theme while on.
+- **Color theme:** Case Board, Pink & Blue, Night Shift or Calm.
+
+Choices are saved in the browser only (`js/options.js`) and are never sent to
+the server. The panel has no text boxes. "Teacher sign-in" at the bottom opens
+the class report for now.
+
 ## Design
 
 The look is a white case board, with ink outlines and hard offset shadows like
@@ -68,6 +85,8 @@ it serves only the game's own files.
 | `js/cases.js` | The six questions and ten cases. Edit cases here. |
 | `js/game.js` | Rules and report maths, shared by the browser and the server |
 | `js/store.js` | Saves totals to the server, or to the browser when there's no server |
+| `js/options.js` | Student options, saved in the browser only and applied before the page paints |
+| `js/sound.js` | The three sound effects, played only when sound is on |
 | `js/app.js` | Screen flow and interaction |
 | `server.js` | Optional zero-dependency server for shared class totals |
 
@@ -77,7 +96,9 @@ it serves only the game's own files.
   gives the answer away on its own, red-herring clues in every case, and an
   answer order with no pattern. They haven't been tried with students yet, and
   they now differ from the *ten test cases* doc.
-- Fib is a placeholder drawing until the illustrator's art exists. There is no sound yet.
+- Fib is a placeholder drawing until the illustrator's art exists. The sound
+  effects are placeholders until the musician's work exists.
+- "Teacher sign-in" opens the class report; there is no real sign-in yet.
 - Anyone who knows a class code can add to its totals. That's acceptable for a
   pilot with teachers you know, but needs sign-in before schools pay.
 - To clear the server's totals, use a new class code or delete `data/totals.json`.
