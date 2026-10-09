@@ -58,8 +58,10 @@ it serves only the game's own files.
 
 ## Known gaps
 
-- The cases were written for ages 9 to 12. The pilot targets ages 11 to 13, so
-  the cases need to be harder.
+- The cases were made harder for ages 11 to 13: neutral setups, no clue that
+  gives the answer away on its own, red-herring clues in every case, and an
+  answer order with no pattern. They haven't been tried with students yet, and
+  they now differ from the *ten test cases* doc.
 - Fib is a placeholder drawing until the illustrator's art exists. There is no sound yet.
 - Anyone who knows a class code can add to its totals. That's acceptable for a
   pilot with teachers you know, but needs sign-in before schools pay.

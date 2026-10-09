@@ -14,6 +14,17 @@ test('case data is complete and balanced', () => {
   assert.equal(CASES.filter((c) => c.answer === 'ai').length, 5, 'half the cases are AI fakes');
 });
 
+test('the answer order cannot be guessed from a pattern', () => {
+  const answers = CASES.map((c) => c.answer);
+  const alternates = answers.every((a, i) => i === 0 || a !== answers[i - 1]);
+  assert.equal(alternates, false, 'answers must not simply alternate');
+  let run = 1;
+  for (let i = 1; i < answers.length; i++) {
+    run = answers[i] === answers[i - 1] ? run + 1 : 1;
+    assert.ok(run <= 2, 'no more than two of the same answer in a row');
+  }
+});
+
 test('ranks follow the doc: 0-3 Rookie, 4-6 Detective, 7-8 Inspector, 9-10 Chief', () => {
   const expected = ['Rookie', 'Rookie', 'Rookie', 'Rookie', 'Detective', 'Detective', 'Detective', 'Inspector', 'Inspector', 'Chief', 'Chief'];
   expected.forEach((name, score) => assert.equal(Game.rankFor(score).name, name, 'score ' + score));
