@@ -1,20 +1,27 @@
-// Where the anonymous class totals live.
-// - "shared": the page is served by server.js, so every device using the same
-//   class code adds to one set of totals.
-// - "local": the page was opened as a plain file or from a static host, so
-//   totals stay in this browser only.
+// How a student device talks to the server. Two modes:
+// - "server": the page came from server.js. The student joins with a class
+//   code, and each answer is sent as an anonymous count.
+// - "demo": opened as a plain file or from a static host. The game plays the
+//   same way and sends nothing anywhere.
+//
+// Every request a student device makes is in this file. The only data sent is
+// the class code, the case set id, and anonymous answers (which case, right or
+// wrong, which three question letters, and the final score).
 (function (root) {
-  const Game = root.AIDetectiveGame;
-  const DEFAULT_CLASS = 'MY-CLASS';
-  const LOCAL_PREFIX = 'ai-detective:totals:';
-  const CLASS_KEY = 'ai-detective:class';
+  const CODE_KEY = 'ai-detective:class';
+  const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const CODE_LENGTH = 6;
 
-  let mode = 'local';
-  let caseCount = 0;
+  let mode = 'demo';
+  let joined = null; // { code, caseSetId }
 
-  function normalizeClassCode(code) {
-    const clean = String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
-    return clean || DEFAULT_CLASS;
+  function cleanCode(raw) {
+    let out = '';
+    for (const ch of String(raw || '').toUpperCase()) {
+      if (ALPHABET.includes(ch)) out += ch;
+      if (out.length === CODE_LENGTH) break;
+    }
+    return out;
   }
 
   function readLocal(key) {
@@ -30,84 +37,79 @@
       if (value === null) root.localStorage.removeItem(key);
       else root.localStorage.setItem(key, value);
     } catch (e) {
-      // Private windows and blocked storage: the game still plays, it just
-      // won't remember totals.
+      // Storage blocked: the student just enters the code again next time.
     }
   }
 
-  function localTotals(classCode) {
-    const raw = readLocal(LOCAL_PREFIX + classCode);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.cases) && parsed.cases.length === caseCount) return parsed;
-      } catch (e) {
-        // fall through to a fresh set
-      }
-    }
-    return Game.emptyTotals(caseCount);
-  }
-
-  async function init(count) {
-    caseCount = count;
-    if (root.location.protocol === 'file:') return mode;
+  async function init() {
+    if (root.document.getElementById('demo-data') || root.location.protocol === 'file:') return (mode = 'demo');
     try {
       const res = await fetch('api/health', { cache: 'no-store' });
       const body = res.ok ? await res.json() : null;
-      if (body && body.ok) mode = 'shared';
+      mode = body && body.ok ? 'server' : 'demo';
     } catch (e) {
-      mode = 'local';
+      mode = 'demo';
     }
     return mode;
   }
 
-  async function send(classCode, event) {
-    if (mode === 'shared') {
-      try {
-        const res = await fetch('api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ classCode, event }),
-        });
-        await res.text();
-        if (res.ok) return;
-      } catch (e) {
-        // Server went away mid-game: keep the count on this device instead.
-      }
+  // { caseSet, settings } or { error: 'missing' | 'expired' | 'slow-down' | 'network' }
+  async function join(rawCode) {
+    const code = cleanCode(rawCode);
+    if (code.length !== CODE_LENGTH) return { error: 'missing' };
+    let res;
+    try {
+      res = await fetch('api/join?code=' + encodeURIComponent(code), { cache: 'no-store' });
+    } catch (e) {
+      return { error: 'network' };
     }
-    const totals = localTotals(classCode);
-    if (Game.applyEvent(totals, event)) writeLocal(LOCAL_PREFIX + classCode, JSON.stringify(totals));
+    if (res.status === 404) return { error: 'missing' };
+    if (res.status === 410) return { error: 'expired' };
+    if (res.status === 429) return { error: 'slow-down' };
+    if (!res.ok) return { error: 'network' };
+    const body = await res.json();
+    joined = { code, caseSetId: body.caseSet.id };
+    writeLocal(CODE_KEY, code);
+    return { caseSet: body.caseSet, settings: body.class };
   }
 
-  async function getTotals(classCode) {
-    if (mode === 'shared') {
-      const res = await fetch('api/totals?class=' + encodeURIComponent(classCode), { cache: 'no-store' });
-      if (!res.ok) throw new Error('Could not load class totals (' + res.status + ')');
-      return res.json();
+  // The demo's cases: embedded in the page, or the default set from cases/.
+  async function demoCaseSet() {
+    const inline = root.document.getElementById('demo-data');
+    if (inline) return JSON.parse(inline.textContent);
+    const index = await (await fetch('cases/sets.json')).json();
+    const entry = index.sets.find((s) => s.id === index.default);
+    return (await fetch('cases/' + entry.file)).json();
+  }
+
+  async function send(event) {
+    if (mode !== 'server' || !joined) return;
+    try {
+      const res = await fetch('api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classCode: joined.code, caseSetId: joined.caseSetId, event }),
+      });
+      await res.text();
+    } catch (e) {
+      // Offline for a moment: this answer isn't counted, the game carries on.
     }
-    return localTotals(classCode);
   }
 
-  function resetLocal(classCode) {
-    writeLocal(LOCAL_PREFIX + classCode, null);
-  }
-
-  function savedClassCode() {
-    return normalizeClassCode(readLocal(CLASS_KEY));
-  }
-
-  function saveClassCode(code) {
-    writeLocal(CLASS_KEY, normalizeClassCode(code));
+  function leave() {
+    joined = null;
+    writeLocal(CODE_KEY, null);
   }
 
   root.AIDetectiveStore = {
     init,
+    join,
+    demoCaseSet,
     send,
-    getTotals,
-    resetLocal,
-    savedClassCode,
-    saveClassCode,
-    normalizeClassCode,
+    leave,
+    cleanCode,
+    CODE_LENGTH,
+    savedCode: () => cleanCode(readLocal(CODE_KEY)),
     get mode() {
       return mode;
     },

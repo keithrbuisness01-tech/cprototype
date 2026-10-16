@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>AI Detective · Teacher</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/options.js"></script>
+</head>
+<body class="teacher-page">
+  <header class="topbar">
+    <a class="brand" href="/teacher" aria-label="AI Detective teacher home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">AI Detective</span>
+    </a>
+    <span class="teacher-chip">Teacher</span>
+  </header>
+
+  <main id="main" class="teacher-main">
+    <div class="teacher-head">
+      <div>
+        <p class="eyebrow">Teacher view</p>
+        <h1 id="teacher-title">Your classes</h1>
+      </div>
+      <form class="new-class" id="new-class">
+        <label for="class-picker" id="picker-label">Class</label>
+        <select id="class-picker" hidden></select>
+        <label class="visually-hidden" for="new-label">New class name</label>
+        <input id="new-label" maxlength="40" placeholder="New class name, e.g. Period 3" autocomplete="off">
+        <button class="btn primary small" type="submit">Add class</button>
+      </form>
+    </div>
+
+    <div id="no-classes" class="empty" hidden>
+      <p>Add a class to get a join code for your students.</p>
+      <p class="muted">Students join with the code or your join link. They never sign in or type their names.</p>
+    </div>
+
+    <section class="class-card" id="class-card" hidden aria-labelledby="class-name">
+      <div class="class-card-main">
+        <h2 id="class-name"></h2>
+        <p class="class-meta" id="class-meta"></p>
+      </div>
+      <div class="class-code-box">
+        <p class="eyebrow">Join code</p>
+        <p class="big-code" id="big-code"></p>
+        <p class="code-status" id="code-status"></p>
+        <button class="btn ghost small" type="button" id="copy-join">Copy join link</button>
+        <p class="copy-note" id="copy-note" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="report-section" hidden aria-labelledby="report-title">
+      <div class="report-head">
+        <h2 id="report-title">Class report</h2>
+        <div class="report-actions">
+          <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
+          <a class="btn ghost small" id="open-summary" target="_blank" rel="noopener">Open results summary</a>
+        </div>
+      </div>
+      <p class="report-mode">Anonymous totals for this class. No student names or individual scores are collected.</p>
+      <div id="report-body"></div>
+    </section>
+
+    <section class="planner" id="planner" hidden aria-labelledby="planner-title">
+      <h2 id="planner-title">Plan the next lesson</h2>
+      <p>The lesson planner uses AI to suggest one class period based on this class's anonymous totals. It never sees anything about a student.</p>
+      <div class="planner-row">
+        <button class="btn primary" type="button" id="plan-btn">Write a lesson plan</button>
+        <p class="planner-budget" id="planner-budget"></p>
+      </div>
+      <p class="planner-status" id="planner-status" aria-live="polite"></p>
+      <div class="planner-output" id="planner-output" hidden></div>
+    </section>
+  </main>
+
+  <div class="idle-warning" id="idle-warning" role="alertdialog" aria-labelledby="idle-msg" hidden>
+    <p id="idle-msg">You'll be signed out in a minute because nothing has happened for a while.</p>
+    <button class="btn primary small" type="button" id="stay-signed-in">Stay signed in</button>
+  </div>
+
+  <div class="confirm" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg" hidden>
+    <div class="confirm-box">
+      <p id="confirm-msg"></p>
+      <div class="actions">
+        <button class="btn primary" type="button" id="confirm-yes">OK</button>
+        <button class="btn ghost" type="button" id="confirm-no">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/sound.js"></script>
+  <script src="/js/report.js"></script>
+  <script src="/js/options-panel.js"></script>
+  <script src="/teacher/teacher.js"></script>
+</body>
+</html>

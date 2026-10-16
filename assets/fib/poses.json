@@ -1,0 +1,8 @@
+{
+  "_readme": "Art slots for Fib. Put the illustrator's file in this folder (svg, png or webp) and write its file name next to the pose. Leave null to keep the placeholder drawing. Hand-drawn art only: no AI-generated images.",
+  "scheming": null,
+  "smug": null,
+  "caught": null,
+  "sulking": null,
+  "impressed": null
+}

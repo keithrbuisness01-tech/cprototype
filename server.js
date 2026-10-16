@@ -1,154 +1,338 @@
-// Optional classroom server. Serves the game and keeps anonymous class totals
-// so every student device using the same class code adds to one report.
-// No dependencies: `node server.js` (PORT and DATA_FILE env vars are optional).
+// AI Detective classroom server. Serves the student game, the protected
+// teacher area, and the APIs between them. `npm start` (see README for the
+// environment variables).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const Game = require('./js/game.js');
-const { CASES } = require('./js/cases.js');
-
-const ROOT = __dirname;
-const DATA_FILE = process.env.DATA_FILE || path.join(ROOT, 'data', 'totals.json');
-const MAX_BODY = 4 * 1024;
-const MAX_CLASSES = 1000;
+const { QUESTIONS } = require('./js/casedata.js');
+const { loadConfig } = require('./lib/config.js');
+const { openStore } = require('./lib/store.js');
+const { loadCaseSets } = require('./lib/case-sets.js');
+const { classService } = require('./lib/classes.js');
+const { authService, maskEmail } = require('./lib/auth.js');
+const { plannerService } = require('./lib/planner.js');
+const { renderSummaryPage } = require('./lib/summary.js');
+const H = require('./lib/http.js');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
-  '.ico': 'image/x-icon',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+  '.md': 'text/plain; charset=utf-8',
 };
-// Only the game's own files are served; never server.js, data/ or tests.
-const STATIC_DIRS = ['css', 'js', 'assets'];
+// Public files. The teacher/ folder is served only through protected routes.
+const PUBLIC_FILES = ['index.html', 'sign-in.html'];
+const PUBLIC_DIRS = ['css', 'js', 'assets', 'cases'];
+const TEACHER_FILES = ['index.html', 'teacher.js'];
 
-function normalizeClassCode(code) {
-  const clean = String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
-  return clean || 'MY-CLASS';
-}
+// Exactly the keys a student device may send, per event type.
+const EVENT_KEYS = { start: ['type'], case: ['type', 'caseIndex', 'correct', 'picks'], finish: ['type', 'score'] };
+const PAYLOAD_KEYS = ['caseSetId', 'classCode', 'event'];
+const sameKeys = (obj, keys) => obj && typeof obj === 'object' && !Array.isArray(obj) &&
+  Object.keys(obj).sort().join() === keys.slice().sort().join();
 
-function loadTotals(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (e) {
-    return {};
-  }
-}
-
-function saveTotals(file, all) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(all));
-  fs.renameSync(tmp, file);
-}
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(JSON.stringify(body));
-}
-
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let size = 0;
-    const chunks = [];
-    req.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY) {
-        reject(new Error('too large'));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
-}
-
-function serveStatic(req, res, pathname) {
-  let decoded;
-  try {
-    decoded = decodeURIComponent(pathname);
-  } catch (e) {
-    res.writeHead(400).end('Bad request');
-    return;
-  }
-  // Check the path after resolving "..", so encoded tricks can't escape.
-  const file = path.resolve(ROOT, '.' + path.sep + (decoded.replace(/^\/+/, '') || 'index.html'));
-  const rel = path.relative(ROOT, file).split(path.sep);
-  const allowed = (rel.length === 1 && rel[0] === 'index.html') ||
-    (rel.length > 1 && STATIC_DIRS.includes(rel[0]));
-  if (!allowed) {
-    res.writeHead(404).end('Not found');
-    return;
-  }
+function serveFile(res, file, req) {
   fs.readFile(file, (err, buf) => {
     if (err) {
-      res.writeHead(404).end('Not found');
+      res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
       return;
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(req.method === 'HEAD' ? undefined : buf);
   });
 }
 
-function createServer({ dataFile = DATA_FILE } = {}) {
-  const all = loadTotals(dataFile);
+// Resolves a public path to a file, or null. Checked after resolving "..".
+function publicFile(root, pathname) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch (e) {
+    return undefined;
+  }
+  const file = path.resolve(root, '.' + path.sep + (decoded.replace(/^\/+/, '') || 'index.html'));
+  const rel = path.relative(root, file).split(path.sep);
+  const ok = (rel.length === 1 && PUBLIC_FILES.includes(rel[0])) || (rel.length > 1 && PUBLIC_DIRS.includes(rel[0]));
+  return ok ? file : null;
+}
 
-  function totalsFor(code) {
-    const existing = all[code];
-    if (existing && Array.isArray(existing.cases) && existing.cases.length === CASES.length) return existing;
-    return Game.emptyTotals(CASES.length);
+function createServer(options = {}) {
+  const config = options.config || loadConfig();
+  const now = options.now || (() => Date.now());
+  const store = openStore(config.dataDir);
+  const caseSets = loadCaseSets(path.join(config.root, 'cases'));
+  const classes = classService(store, config, caseSets, now);
+  const auth = authService(config, { providers: options.providers, fetchImpl: options.fetchImpl, now });
+  let client = options.anthropicClient;
+  if (!client && config.ai.enabled) {
+    const Anthropic = require('@anthropic-ai/sdk').default;
+    client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
+  }
+  const planner = plannerService(store, config, { client, now });
+  const allow = H.rateLimiter();
+
+  function totalsFor(cls, caseSet) {
+    const byClass = store.totals.data[cls.id] || (store.totals.data[cls.id] = {});
+    const t = byClass[caseSet.id];
+    if (t && Array.isArray(t.cases) && t.cases.length === caseSet.cases.length) return t;
+    return (byClass[caseSet.id] = Game.emptyTotals(caseSet.cases.length));
   }
 
-  return http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://localhost');
-    try {
-      if (url.pathname === '/api/health') {
-        sendJson(res, 200, { ok: true });
-      } else if (url.pathname === '/api/totals' && req.method === 'GET') {
-        sendJson(res, 200, totalsFor(normalizeClassCode(url.searchParams.get('class'))));
-      } else if (url.pathname === '/api/events' && req.method === 'POST') {
-        let payload;
-        try {
-          payload = JSON.parse(await readBody(req));
-        } catch (e) {
-          sendJson(res, 400, { error: 'Bad request' });
-          return;
-        }
-        const code = normalizeClassCode(payload && payload.classCode);
-        if (!all[code] && Object.keys(all).length >= MAX_CLASSES) {
-          sendJson(res, 507, { error: 'Too many class codes' });
-          return;
-        }
-        const totals = totalsFor(code);
-        if (!Game.applyEvent(totals, payload && payload.event)) {
-          sendJson(res, 400, { error: 'Invalid event' });
-          return;
-        }
-        all[code] = totals;
-        saveTotals(dataFile, all);
-        sendJson(res, 200, { ok: true });
-      } else if (url.pathname.startsWith('/api/')) {
-        sendJson(res, 404, { error: 'Not found' });
-      } else if (req.method === 'GET' || req.method === 'HEAD') {
-        serveStatic(req, res, url.pathname);
-      } else {
-        res.writeHead(405).end('Method not allowed');
+  function classView(cls) {
+    const active = cls.codeExpiresAt > now();
+    const share = cls.share && cls.share.expiresAt > now()
+      ? { url: config.publicUrl + '/s/' + cls.share.token, expiresAt: cls.share.expiresAt }
+      : null;
+    return {
+      id: cls.id,
+      label: cls.label,
+      code: cls.code,
+      codeActive: active,
+      codeExpiresAt: cls.codeExpiresAt,
+      joinUrl: config.publicUrl + '/?class=' + cls.code,
+      caseSetId: cls.caseSetId,
+      soundMuted: cls.soundMuted,
+      share,
+    };
+  }
+
+  function summaryFor(cls) {
+    const caseSet = caseSets.get(cls.caseSetId);
+    return { caseSet, summary: Game.summarize(totalsFor(cls, caseSet), caseSet.cases, QUESTIONS) };
+  }
+
+  const sessionCookie = (value, maxAge) => H.cookie('ad_session', value, { maxAge, secure: config.secureCookies });
+
+  // ---- Routes ----------------------------------------------------------------
+  // auth: 'public' or 'teacher'. Every teacher route is checked in one place
+  // (handle() below) before its handler runs, and the tests walk this table.
+  const routes = [
+    { method: 'GET', path: '/api/health', auth: 'public', handler: (ctx) => H.sendJson(ctx.res, 200, { ok: true }) },
+
+    { method: 'GET', path: '/api/join', auth: 'public', handler: (ctx) => {
+      if (!allow('join:' + ctx.ip, config.rateLimits.join, 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
+      const found = classes.lookupCode(ctx.url.searchParams.get('code'));
+      if (found.status !== 'ok') return H.sendJson(ctx.res, found.status === 'expired' ? 410 : 404, { error: 'code-' + found.status });
+      const caseSet = caseSets.get(found.cls.caseSetId);
+      H.sendJson(ctx.res, 200, {
+        class: { grade: caseSet.grade, soundMuted: found.cls.soundMuted },
+        caseSet: { id: caseSet.id, title: caseSet.title, grade: caseSet.grade, cases: caseSet.cases },
+      });
+    } },
+
+    { method: 'POST', path: '/api/events', auth: 'public', handler: async (ctx) => {
+      if (!allow('events:' + ctx.ip, config.rateLimits.events, 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
+      const payload = await H.readJson(ctx.req);
+      if (!sameKeys(payload, PAYLOAD_KEYS) || !payload.event || !EVENT_KEYS[payload.event.type] ||
+          !sameKeys(payload.event, EVENT_KEYS[payload.event.type])) {
+        return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
       }
-    } catch (err) {
-      sendJson(res, 500, { error: 'Server error' });
+      const found = classes.lookupCode(payload.classCode);
+      if (found.status !== 'ok') return H.sendJson(ctx.res, found.status === 'expired' ? 410 : 404, { error: 'code-' + found.status });
+      if (payload.caseSetId !== found.cls.caseSetId) return H.sendJson(ctx.res, 409, { error: 'case-set-changed' });
+      const totals = totalsFor(found.cls, caseSets.get(found.cls.caseSetId));
+      if (!Game.applyEvent(totals, payload.event)) return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
+      store.totals.save();
+      H.sendJson(ctx.res, 200, { ok: true });
+    } },
+
+    { method: 'GET', path: '/auth/providers', auth: 'public', handler: (ctx) => {
+      H.sendJson(ctx.res, 200, { providers: auth.enabled().map((name) => ({ name, label: auth.providers[name].label })) });
+    } },
+
+    { method: 'GET', path: '/auth/:provider', auth: 'public', handler: (ctx) => {
+      if (!allow('auth:' + ctx.ip, config.rateLimits.auth, 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
+      const started = auth.start(ctx.params.provider);
+      if (!started) return H.sendJson(ctx.res, 404, { error: 'not-found' });
+      H.redirect(ctx.res, started.url, [H.cookie('ad_login', started.state, { path: '/auth', maxAge: 600, secure: config.secureCookies })]);
+    } },
+
+    { method: 'GET', path: '/auth/:provider/callback', auth: 'public', handler: async (ctx) => {
+      const clearLogin = H.cookie('ad_login', '', { path: '/auth', maxAge: 0, secure: config.secureCookies });
+      if (!auth.providers[ctx.params.provider]) return H.sendJson(ctx.res, 404, { error: 'not-found' });
+      const result = await auth.finish(ctx.params.provider, ctx.url.searchParams, ctx.cookies.ad_login);
+      if (result.error) {
+        console.warn('Teacher sign-in refused (' + ctx.params.provider + '): ' + result.reason);
+        return H.redirect(ctx.res, '/sign-in?error=' + result.error, [clearLogin]);
+      }
+      H.redirect(ctx.res, '/teacher', [clearLogin, sessionCookie(result.session.id, config.sessionMaxHours * 3600)]);
+    } },
+
+    { method: 'POST', path: '/auth/sign-out', auth: 'public', handler: (ctx) => {
+      if (!H.sameOrigin(ctx.req, config)) return H.sendJson(ctx.res, 403, { error: 'cross-site' });
+      auth.signOut(ctx.cookies.ad_session);
+      ctx.res.setHeader('Set-Cookie', sessionCookie('', 0));
+      H.sendJson(ctx.res, 200, { ok: true });
+    } },
+
+    { method: 'GET', path: '/s/:token', auth: 'public', handler: (ctx) => {
+      const cls = classes.byShareToken(ctx.params.token);
+      if (!cls) return H.sendHtml(ctx.res, 404, '<!doctype html><title>Link expired</title><p>This results link has expired or was turned off.</p>');
+      const { summary, caseSet } = summaryFor(cls);
+      H.sendHtml(ctx.res, 200, renderSummaryPage({ summary, caseSet, label: cls.label, generatedAt: now(), shared: true }));
+    } },
+
+    { method: 'GET', path: '/sign-in', auth: 'public', handler: (ctx) => serveFile(ctx.res, path.join(config.root, 'sign-in.html'), ctx.req) },
+
+    // ---- Teacher pages ----
+    { method: 'GET', path: '/teacher', auth: 'teacher', page: true, handler: (ctx) => serveFile(ctx.res, path.join(config.root, 'teacher', 'index.html'), ctx.req) },
+    { method: 'GET', path: '/teacher/summary/:id', auth: 'teacher', page: true, handler: (ctx) => {
+      const cls = classes.ownedBy(ctx.session.email, ctx.params.id);
+      if (!cls) return H.sendHtml(ctx.res, 404, '<!doctype html><title>Not found</title><p>Class not found.</p>');
+      const { summary, caseSet } = summaryFor(cls);
+      H.sendHtml(ctx.res, 200, renderSummaryPage({ summary, caseSet, label: cls.label, generatedAt: now(), shared: false }));
+    } },
+    { method: 'GET', path: '/teacher/:file', auth: 'teacher', page: true, handler: (ctx) => {
+      if (!TEACHER_FILES.includes(ctx.params.file)) return H.sendJson(ctx.res, 404, { error: 'not-found' });
+      serveFile(ctx.res, path.join(config.root, 'teacher', ctx.params.file), ctx.req);
+    } },
+
+    // ---- Teacher APIs ----
+    { method: 'GET', path: '/api/teacher/me', auth: 'teacher', handler: (ctx) => {
+      H.sendJson(ctx.res, 200, {
+        email: maskEmail(ctx.session.email),
+        idleMinutes: config.idleMinutes,
+        supportUrl: config.supportUrl,
+        plannerEnabled: config.ai.enabled,
+        caseSets: caseSets.list(),
+      });
+    } },
+    { method: 'GET', path: '/api/teacher/classes', auth: 'teacher', handler: (ctx) => {
+      H.sendJson(ctx.res, 200, { classes: classes.listFor(ctx.session.email).map(classView) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes', auth: 'teacher', handler: async (ctx) => {
+      const body = await H.readJson(ctx.req);
+      if (classes.listFor(ctx.session.email).length >= 20) return H.sendJson(ctx.res, 409, { error: 'too-many-classes' });
+      H.sendJson(ctx.res, 201, { class: classView(classes.create(ctx.session.email, { label: body.label })) });
+    } },
+    { method: 'GET', path: '/api/teacher/classes/:id/report', auth: 'teacher', cls: true, handler: (ctx) => {
+      const { summary, caseSet } = summaryFor(ctx.cls);
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls), caseSet: { id: caseSet.id, title: caseSet.title, grade: caseSet.grade }, summary });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/settings', auth: 'teacher', cls: true, handler: async (ctx) => {
+      const body = await H.readJson(ctx.req);
+      const changes = {};
+      for (const key of ['caseSetId', 'soundMuted', 'label']) if (key in body) changes[key] = body[key];
+      if (!classes.update(ctx.cls, changes)) return H.sendJson(ctx.res, 400, { error: 'invalid-settings' });
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/reset-code', auth: 'teacher', cls: true, handler: (ctx) => {
+      classes.resetCode(ctx.cls);
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/expire-code', auth: 'teacher', cls: true, handler: async (ctx) => {
+      const body = await H.readJson(ctx.req);
+      if (![0, 7, 30, 90].includes(body.days)) return H.sendJson(ctx.res, 400, { error: 'invalid-days' });
+      classes.expireCode(ctx.cls, body.days);
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/share', auth: 'teacher', cls: true, handler: (ctx) => {
+      classes.share(ctx.cls);
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/unshare', auth: 'teacher', cls: true, handler: (ctx) => {
+      classes.revokeShare(ctx.cls);
+      H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
+    } },
+    { method: 'POST', path: '/api/teacher/classes/:id/plan', auth: 'teacher', cls: true, handler: async (ctx) => {
+      const { summary, caseSet } = summaryFor(ctx.cls);
+      const result = await planner.plan(ctx.session.email, summary, caseSet);
+      H.sendJson(ctx.res, result.status, Object.assign({ budget: planner.budget() }, result.body));
+    } },
+    { method: 'GET', path: '/api/teacher/planner-budget', auth: 'teacher', handler: (ctx) => {
+      H.sendJson(ctx.res, 200, Object.assign({ enabled: config.ai.enabled }, planner.budget()));
+    } },
+  ];
+
+  for (const r of routes) {
+    const names = [];
+    const pattern = r.path.replace(/:(\w+)/g, (_, name) => {
+      names.push(name);
+      return '([^/]+)';
+    });
+    r.regex = new RegExp('^' + pattern + '$');
+    r.names = names;
+  }
+
+  const isTeacherPath = (p) => p === '/teacher' || p.startsWith('/teacher/') || p.startsWith('/api/teacher');
+
+  async function handle(req, res) {
+    H.securityHeaders(res);
+    const url = new URL(req.url, 'http://localhost');
+    const method = req.method === 'HEAD' ? 'GET' : req.method;
+    const ctx = { req, res, url, ip: H.clientIp(req, config), cookies: H.parseCookies(req), params: {} };
+
+    let route = null;
+    for (const r of routes) {
+      const m = r.regex.exec(url.pathname);
+      if (m && r.method === method) {
+        route = r;
+        try {
+          r.names.forEach((n, i) => {
+            ctx.params[n] = decodeURIComponent(m[i + 1]);
+          });
+        } catch (e) {
+          return H.sendJson(res, 400, { error: 'bad-request' });
+        }
+        break;
+      }
     }
+
+    // Teacher area: checked before anything else, even for unknown paths.
+    if ((route && route.auth === 'teacher') || (!route && isTeacherPath(url.pathname))) {
+      const page = route ? route.page : !url.pathname.startsWith('/api/');
+      const check = auth.check(ctx.cookies.ad_session);
+      if (check.error) {
+        const reason = check.error === 'not-approved' ? 'not-approved' : check.error;
+        if (page) return H.redirect(res, '/sign-in?error=' + reason, check.error === 'signed-out' ? [] : [sessionCookie('', 0)]);
+        return H.sendJson(res, check.error === 'not-approved' ? 403 : 401, { error: reason });
+      }
+      ctx.session = check.session;
+      if (!route) return H.sendJson(res, 404, { error: 'not-found' });
+      if (method !== 'GET' && !H.sameOrigin(req, config)) return H.sendJson(res, 403, { error: 'cross-site' });
+      if (route.cls) {
+        ctx.cls = classes.ownedBy(ctx.session.email, ctx.params.id);
+        if (!ctx.cls) return H.sendJson(res, 404, { error: 'not-found' });
+      }
+      return route.handler(ctx);
+    }
+
+    if (route) return route.handler(ctx);
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return H.sendJson(res, 404, { error: 'not-found' });
+    if (method !== 'GET') return res.writeHead(405).end('Method not allowed');
+    const file = publicFile(config.root, url.pathname);
+    if (file === undefined) return res.writeHead(400).end('Bad request');
+    if (!file) return res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
+    serveFile(res, file, req);
+  }
+
+  const server = http.createServer((req, res) => {
+    Promise.resolve(handle(req, res)).catch((err) => {
+      if (res.headersSent) return res.end();
+      if (err && err.status) return H.sendJson(res, err.status, { error: 'bad-request' });
+      console.error(err);
+      H.sendJson(res, 500, { error: 'server-error' });
+    });
   });
+  server.routes = routes;
+  return server;
 }
 
 if (require.main === module) {
-  const port = Number(process.env.PORT) || 8080;
-  createServer().listen(port, () => {
-    console.log('AI Detective running at http://localhost:' + port);
-    console.log('Class report: http://localhost:' + port + '/#report');
+  const config = loadConfig();
+  if (!fs.existsSync(config.approvedTeachersFile)) {
+    console.warn('No approved-teachers file at ' + config.approvedTeachersFile + '. Nobody can sign in as a teacher until you create it.');
+  }
+  createServer({ config }).listen(config.port, () => {
+    console.log('AI Detective running at ' + config.publicUrl);
+    console.log('Teacher sign-in: ' + config.publicUrl + '/sign-in');
   });
 }
 
-module.exports = { createServer, normalizeClassCode };
+module.exports = { createServer };

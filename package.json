@@ -1,13 +1,17 @@
 {
   "name": "ai-detective",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Classroom game prototype: judge whether content was made by a person or by AI.",
+  "description": "Classroom game: students judge whether an item was made by a person or by AI.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "check:network": "node scripts/check-student-network.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
   }
 }

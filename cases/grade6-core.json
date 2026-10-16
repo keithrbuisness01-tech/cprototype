@@ -1,0 +1,247 @@
+{
+  "id": "grade6-core",
+  "title": "Grade 6 core cases",
+  "grade": 6,
+  "cases": [
+    {
+      "id": "skateboarding-dog",
+      "title": "The skateboarding dog",
+      "grade": 6,
+      "item": {
+        "kind": "video",
+        "description": "A video shows a bulldog riding a skateboard down a ramp at a park, then turning to dodge a bench."
+      },
+      "clues": {
+        "A": "An account called @bruno_rides. It started posting two months ago.",
+        "B": "A few accounts reposted it. One of them says \"this is so fake lol\" but doesn't say why.",
+        "C": "The dog's shadow goes a little blurry when he turns.",
+        "D": "The caption says \"Day 41. He still won't turn left.\"",
+        "E": "Someone asks which park this is. The account names it and posts a second video of the same ride from another angle, with people walking past.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "verdictNote": "Person. It's a real video.",
+      "lesson": "A new account and a \"fake\" comment aren't proof. A second angle of the same moment is very hard to fake.",
+      "fib": {
+        "right": "Ugh. I hoped that blurry shadow would scare you off.",
+        "wrong": "Ha! That dog is real. One reply showed the same ride from another angle!"
+      }
+    },
+    {
+      "id": "highway-shark",
+      "title": "The shark on the highway",
+      "grade": 6,
+      "item": {
+        "kind": "photo",
+        "description": "During a real flood, a photo shows a shark swimming along a flooded highway."
+      },
+      "clues": {
+        "A": "An account with 200,000 followers that posts storm photos. Most of its photos credit the photographer. This one doesn't.",
+        "B": "Two news sites shared it. Both link back to that same post and nothing else.",
+        "C": "The ripples around the fin look right, and the shark is sharp and clear.",
+        "D": "The caption names the city and the date of the flood. Both are correct.",
+        "E": "Someone asks who took it. The account replies \"a follower sent it in\" and won't say who.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "verdictNote": "AI. The flood was real. The shark was not.",
+      "lesson": "Lots of shares can all lead back to one source. A real event doesn't make every photo of it real.",
+      "fib": {
+        "right": "Fine. Two news sites, one source. You spotted it.",
+        "wrong": "Gotcha! Both news sites just copied my post. Nobody actually saw a shark."
+      }
+    },
+    {
+      "id": "book-summary",
+      "title": "The book summary",
+      "grade": 6,
+      "item": {
+        "kind": "website text",
+        "description": "A study website has a summary of the book your class just finished. It is well written and gets the ending right."
+      },
+      "clues": {
+        "A": "The summary is signed \"The Study Team.\"",
+        "B": "Other summaries online tell the same main story.",
+        "C": "The spelling and grammar are perfect.",
+        "D": "It says the main character's sister helps her escape. In the book, it's her best friend who helps. She has no sister.",
+        "E": "You send the site a question about who wrote it. You get an instant reply that doesn't answer your question.",
+        "F": "No label on the summary. The site's About page says it \"uses the latest technology.\""
+      },
+      "verdict": "ai",
+      "verdictNote": "AI.",
+      "lesson": "AI can get most things right and invent one detail with total confidence. Check details against the real thing.",
+      "fib": {
+        "right": "Rats. I thought nobody would notice one little sister.",
+        "wrong": "Gotcha! She doesn't have a sister. You read the book!"
+      }
+    },
+    {
+      "id": "dragon-painting",
+      "title": "The dragon painting",
+      "grade": 6,
+      "item": {
+        "kind": "artwork",
+        "description": "A detailed digital painting of a dragon wins the school art contest. Some students say it is too good for a 7th grader."
+      },
+      "clues": {
+        "A": "Your classmate Maya entered it.",
+        "B": "An image search finds nothing like it online.",
+        "C": "The scales are perfectly even, and the lighting looks professional.",
+        "D": "In the corner, the dragon guards a goldfish bowl labeled \"Bubbles.\" Maya's little brother has a goldfish called Bubbles.",
+        "E": "You ask how she made it. She opens her art app. The file has 62 layers, with a rough pencil sketch at the bottom.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "verdictNote": "Person.",
+      "lesson": "Being very good isn't proof of AI. The steps behind the work are.",
+      "fib": {
+        "right": "Bah. I was sure \"too good to be real\" would fool you.",
+        "wrong": "Ha! Maya painted it herself. Sixty-two layers, and you never asked to see them!"
+      }
+    },
+    {
+      "id": "cousin-voice",
+      "title": "The cousin's voice message",
+      "grade": 6,
+      "item": {
+        "kind": "voice message",
+        "description": "A voice message sounds exactly like your cousin. He says his phone broke and asks you to text him your mom's number on this new one."
+      },
+      "clues": {
+        "A": "It came from a number you don't recognize. He says he's borrowing a friend's phone.",
+        "B": "Your cousin posted from his usual account an hour ago.",
+        "C": "The voice, the laugh, everything sounds just like him.",
+        "D": "He mentions your dog, Pepper, by name.",
+        "E": "You reply \"what did we eat at Grandma's last weekend?\" He answers \"haha can't talk, just send it.\"",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "verdictNote": "AI. Someone copied his voice.",
+      "lesson": "Voices can be copied and names can be found online. Ask something only the real person would know, check through a way you already trust, and tell an adult.",
+      "fib": {
+        "right": "Ugh. One question only the real cousin could answer, and my plan falls apart.",
+        "wrong": "Gotcha! That was a copied voice. Pepper's name is all over your family's photos."
+      }
+    },
+    {
+      "id": "octopus-hearts",
+      "title": "The three hearts",
+      "grade": 6,
+      "item": {
+        "kind": "post",
+        "description": "A post in a homework group says: \"Fun fact: an octopus has three hearts and blue blood.\""
+      },
+      "clues": {
+        "A": "A student from another school. You don't know her.",
+        "B": "A science encyclopedia and the city aquarium's website both say the same thing.",
+        "C": "Blue blood sounds made up.",
+        "D": "The post doesn't say where the fact comes from.",
+        "E": "Someone asks why three. She replies that two hearts pump blood to the gills and one pumps it to the rest of the body. She saw it on a class trip.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "verdictNote": "Person. The fact is true, blue blood and all.",
+      "lesson": "Weird doesn't mean fake. Check a source you trust before you decide.",
+      "fib": {
+        "right": "Hmph. I thought blue blood would sound made up enough.",
+        "wrong": "Ha! It's true, blue blood and all. One look in an encyclopedia would have told you."
+      }
+    },
+    {
+      "id": "purple-sunset",
+      "title": "The purple sunset",
+      "grade": 6,
+      "item": {
+        "kind": "photo",
+        "description": "A photo shows a bright purple and orange sky over the beach."
+      },
+      "clues": {
+        "A": "A photography account you don't follow. It has posted beach photos for six years.",
+        "B": "That evening the local weather page posted about \"unusual purple skies after the storm.\"",
+        "C": "The colors look too bright to be real.",
+        "D": "The caption names the beach and says \"right after the storm, around 7:40.\"",
+        "E": "Someone asks if it's edited. The account says \"I turned the colors up a little.\"",
+        "F": "The post is tagged #edited."
+      },
+      "verdict": "person",
+      "verdictNote": "Person. It's a real photo, edited a little.",
+      "lesson": "Edited isn't the same as made by AI. Other witnesses are evidence.",
+      "fib": {
+        "right": "Fine. Edited isn't the same as AI-made. Half the town saw that sky.",
+        "wrong": "Ha! A real sunset with the colors turned up. Editing a photo doesn't make it AI!"
+      }
+    },
+    {
+      "id": "homework-helper",
+      "title": "The friendly homework helper",
+      "grade": 6,
+      "item": {
+        "kind": "chat message",
+        "description": "A chat box on a homework website is called \"Sam.\" Sam says, \"I totally get it! I had the same problem in 6th grade.\""
+      },
+      "clues": {
+        "A": "The website says Sam is \"part of our tutoring team.\"",
+        "B": "The site's team page has a photo of a smiling \"Sam, tutor.\"",
+        "C": "Sam replies within a second, every time, with long answers.",
+        "D": "Sam says it had the same problem in 6th grade but can't say which school or who the teacher was.",
+        "E": "You ask Sam the same math question twice. You get two different answers, both said with total confidence.",
+        "F": "The site's terms page, three clicks deep, mentions \"automated tutoring.\""
+      },
+      "verdict": "ai",
+      "verdictNote": "AI.",
+      "lesson": "AI can sound like a friend and come with a friendly face. It's fine to use, as long as you know what it is.",
+      "fib": {
+        "right": "Bah. I gave Sam a photo and everything.",
+        "wrong": "Gotcha! Sam's an AI helper. The photo was just a photo."
+      }
+    },
+    {
+      "id": "game-review",
+      "title": "The four-star review",
+      "grade": 6,
+      "item": {
+        "kind": "review",
+        "description": "A review of a new game says: \"Loved the forest level and the soundtrack. The controls took a while to get used to, but it's worth it. 4 stars.\""
+      },
+      "clues": {
+        "A": "The account has reviewed 50 things this month, including games, blenders, shoes and a lawnmower.",
+        "B": "Reviews of three other games use the same line: \"took a while to get used to, but it's worth it.\"",
+        "C": "It includes a small complaint, so it sounds honest.",
+        "D": "It mentions the forest level. The game has one, and it's shown in the trailer.",
+        "E": "Someone asks what the boss at the end of the forest level is like. No reply.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "verdictNote": "AI.",
+      "lesson": "A small complaint and one real detail can be faked too. Check what else the account has written.",
+      "fib": {
+        "right": "Rats. I even added a complaint to make it sound real.",
+        "wrong": "Gotcha! Everything in that review was in the trailer. Fifty reviews in a month, and you trusted it."
+      }
+    },
+    {
+      "id": "hamster-poem",
+      "title": "The hamster poem",
+      "grade": 6,
+      "item": {
+        "kind": "writing",
+        "description": "Your friend Leo shows you a poem about his hamster. It rhymes perfectly, and it is really good."
+      },
+      "clues": {
+        "A": "Leo showed it to you himself at lunch.",
+        "B": "It isn't online anywhere.",
+        "C": "No spelling mistakes, and every line has the same beat.",
+        "D": "It's about his hamster Biscuit escaping behind the fridge last week. He told you about that when it happened.",
+        "E": "You ask which line was hardest. He shows you his notebook, full of crossed-out tries at rhyming \"fridge.\"",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "verdictNote": "Person.",
+      "lesson": "Good writing isn't proof of AI, and personal details can be typed into AI. Seeing the work in progress is the strongest proof.",
+      "fib": {
+        "right": "Hmph. I thought a perfect poem would make you suspicious.",
+        "wrong": "Ha! Leo wrote it. His crossed-out lines were right there in the notebook!"
+      }
+    }
+  ]
+}

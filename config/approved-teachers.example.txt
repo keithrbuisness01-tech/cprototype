@@ -1,0 +1,6 @@
+# Approved teachers for AI Detective.
+# Copy this file to config/approved-teachers.txt (which git ignores) and list
+# one school email per line. Only these accounts can sign in as a teacher.
+# Changes take effect on the teacher's next request: no restart needed.
+#
+# teacher.name@yourschool.org

@@ -1,0 +1,11 @@
+{
+  "default": "grade6-core",
+  "sets": [
+    {
+      "id": "grade6-core",
+      "title": "Grade 6 core cases",
+      "grade": 6,
+      "file": "grade6-core.json"
+    }
+  ]
+}

@@ -1,86 +1,21 @@
-// Screens and interaction. Rules live in game.js; storage in store.js.
+// Student screens. Rules live in game.js, server traffic in store.js, Fib in
+// fib.js. Students never type anything except a class code, and nothing about
+// them is stored or sent: see store.js.
 (function () {
-  const { QUESTIONS, CASES } = window.AIDetectiveData;
+  const { QUESTIONS } = window.AIDetectiveCaseData;
   const Game = window.AIDetectiveGame;
   const Store = window.AIDetectiveStore;
   const Options = window.AIDetectiveOptions;
   const Sound = window.AIDetectiveSound;
+  const Fib = window.AIDetectiveFib;
+  const { el, ask } = window.AIDetectiveUI;
 
   const $ = (id) => document.getElementById(id);
-  const screens = ['home', 'howto', 'case', 'end', 'report'];
+  const screens = ['home', 'howto', 'case', 'end'];
 
+  let caseSet = null;
   let run = null;
-  let classCode = Store.savedClassCode();
-
-  // ---- Fib -----------------------------------------------------------------
-  // A placeholder drawing until the illustrator's art exists: a purple
-  // prankster in a top hat and a neon-blue bandit mask.
-  const MOUTHS = {
-    smug: 'M48 97 Q62 104 76 93',
-    gleeful: 'M44 94 Q60 113 76 94 Z',
-    annoyed: 'M48 102 Q60 93 72 102',
-  };
-  const BROWS = {
-    smug: '<path d="M40 59 L52 61" /><path d="M68 58 L80 50" />',
-    gleeful: '<path d="M40 56 L52 53" /><path d="M68 53 L80 56" />',
-    annoyed: '<path d="M40 52 L52 60" /><path d="M68 60 L80 52" />',
-  };
-  // Where the pupils look, as an offset from the centre of each eye.
-  const GAZE = { smug: [2.5, 0], gleeful: [0, -0.5], annoyed: [-1, -1.5] };
-
-  function fibSvg(mood) {
-    const filled = mood === 'gleeful';
-    const [gx, gy] = GAZE[mood];
-    return (
-      '<svg viewBox="0 0 120 124" role="img" aria-label="Fib looks ' + mood + '">' +
-      '<circle class="fib-ring" cx="60" cy="78" r="42" />' +
-      '<circle class="fib-head" cx="60" cy="78" r="35" />' +
-      '<g transform="rotate(-9 60 44)">' +
-      '<rect class="fib-hat" x="41" y="12" width="38" height="31" rx="4" />' +
-      '<rect class="fib-band" x="41" y="34" width="38" height="7" />' +
-      '<rect class="fib-hat" x="29" y="41" width="62" height="8" rx="4" />' +
-      '</g>' +
-      '<g class="fib-brow">' + BROWS[mood] + '</g>' +
-      '<path class="fib-mask" d="M24 66 L33 69 Q60 58 87 69 L96 66 L94 78 L89 76 Q88 88 77 88 Q67 88 60 80 Q53 88 43 88 Q32 88 31 76 L26 78 Z" />' +
-      '<ellipse class="fib-eye" cx="45" cy="75" rx="6.5" ry="5.5" />' +
-      '<ellipse class="fib-eye" cx="75" cy="75" rx="6.5" ry="5.5" />' +
-      '<circle class="fib-pupil" cx="' + (45 + gx) + '" cy="' + (75 + gy) + '" r="2.8" />' +
-      '<circle class="fib-pupil" cx="' + (75 + gx) + '" cy="' + (75 + gy) + '" r="2.8" />' +
-      '<path class="fib-mouth' + (filled ? ' filled' : '') + '" d="' + MOUTHS[mood] + '" />' +
-      '</svg>'
-    );
-  }
-
-  function setFib(el, mood) {
-    el.innerHTML = fibSvg(mood);
-    el.dataset.fib = mood;
-  }
-
-  // In-page confirm, because embedded viewers block the browser's own dialogs.
-  function ask(message, yesLabel) {
-    return new Promise((resolve) => {
-      const box = $('confirm');
-      const opener = document.activeElement;
-      $('confirm-msg').textContent = message;
-      $('confirm-yes').textContent = yesLabel;
-      box.hidden = false;
-      $('confirm-no').focus();
-      function done(answer) {
-        box.hidden = true;
-        $('confirm-yes').removeEventListener('click', yes);
-        $('confirm-no').removeEventListener('click', no);
-        box.removeEventListener('keydown', key);
-        if (opener && opener.focus) opener.focus();
-        resolve(answer);
-      }
-      const yes = () => done(true);
-      const no = () => done(false);
-      const key = (e) => { if (e.key === 'Escape') done(false); };
-      $('confirm-yes').addEventListener('click', yes);
-      $('confirm-no').addEventListener('click', no);
-      box.addEventListener('keydown', key);
-    });
-  }
+  let panel = null;
 
   // ---- Navigation ------------------------------------------------------------
 
@@ -93,46 +28,94 @@
       heading.setAttribute('tabindex', '-1');
       heading.focus({ preventScroll: true });
     }
-    if (name === 'report') loadReport();
   }
 
-  function goHome() {
-    $('class-code').value = classCode === 'MY-CLASS' ? '' : classCode;
-    show('home');
-  }
-
-  // Home and the teacher report both leave the current game.
-  async function navigate(where) {
-    if (where !== 'home' && where !== 'report') {
-      show(where);
-      return;
-    }
+  async function leaveGame() {
     if (run && !Game.isOver(run) && run.results.length > 0 &&
-        !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return;
-    if (where === 'report' && !$('screen-home').hidden) {
-      reportClass = Store.normalizeClassCode($('class-code').value);
-    }
+        !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return false;
     run = null;
-    if (where === 'home') goHome();
-    else show('report');
+    return true;
   }
 
-  document.addEventListener('click', (e) => {
-    const target = e.target.closest('[data-go]');
-    if (target) navigate(target.dataset.go);
+  document.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-go="home"]');
+    if (target && (await leaveGame())) show('home');
   });
 
   function scrollToNode(node, block) {
     node.scrollIntoView({ behavior: Options.get().reducedMotion ? 'auto' : 'smooth', block });
   }
 
+  // ---- Joining a class ---------------------------------------------------------
+
+  const JOIN_ERRORS = {
+    missing: "That code doesn't match a class. Check it with your teacher.",
+    expired: 'That class code has expired. Ask your teacher for the new one.',
+    'slow-down': 'Too many tries. Wait a minute, then try again.',
+    network: "Couldn't reach the classroom server. Check the connection and try again.",
+  };
+
+  function useCaseSet(set, settings) {
+    caseSet = set;
+    window.AIDetectiveClass = { soundMuted: Boolean(settings && settings.soundMuted) };
+    if (panel) panel.lockSound(window.AIDetectiveClass.soundMuted);
+    $('case-count').textContent = set.cases.length;
+    $('ranks-line').innerHTML = '';
+    for (const band of Game.rankBands(set.cases.length)) {
+      $('ranks-line').appendChild(el('span', null, band.from + '–' + band.to + ' ' + band.name));
+    }
+    $('start-btn').disabled = false;
+  }
+
+  function showJoinForm(message) {
+    caseSet = null;
+    $('join').hidden = false;
+    $('joined').hidden = true;
+    $('start-btn').disabled = true;
+    $('join-error').hidden = !message;
+    $('join-error').textContent = message || '';
+  }
+
+  async function joinWith(code) {
+    $('join-btn').disabled = true;
+    const result = await Store.join(code);
+    $('join-btn').disabled = false;
+    if (result.error) {
+      showJoinForm(JOIN_ERRORS[result.error]);
+      return;
+    }
+    useCaseSet(result.caseSet, result.settings);
+    $('join').hidden = true;
+    $('joined').hidden = false;
+    $('joined-detail').textContent = 'Grade ' + result.caseSet.grade + ' · ' + result.caseSet.cases.length + ' cases';
+  }
+
+  // Only letters and numbers from the code alphabet can be typed.
+  $('class-code').addEventListener('input', () => {
+    const clean = Store.cleanCode($('class-code').value);
+    if (clean !== $('class-code').value) $('class-code').value = clean;
+  });
+
+  $('join').addEventListener('submit', (e) => {
+    e.preventDefault();
+    joinWith($('class-code').value);
+  });
+
+  $('change-class').addEventListener('click', () => {
+    Store.leave();
+    $('class-code').value = '';
+    showJoinForm('');
+    $('class-code').focus();
+  });
+
   // ---- A run -----------------------------------------------------------------
 
+  const cases = () => caseSet.cases;
+
   function startRun() {
-    classCode = Store.normalizeClassCode($('class-code').value);
-    Store.saveClassCode(classCode);
-    run = Game.newRun(CASES.length);
-    Store.send(classCode, { type: 'start' });
+    if (!caseSet) return;
+    run = Game.newRun(cases().length);
+    Store.send({ type: 'start' });
     updateScore();
     show('howto');
   }
@@ -144,27 +127,23 @@
   }
 
   function renderCase() {
-    const c = CASES[run.index];
-    $('case-tag').textContent = 'Case ' + (run.index + 1) + ' of ' + CASES.length;
+    const c = cases()[run.index];
+    $('case-tag').textContent = 'Case ' + (run.index + 1) + ' of ' + cases().length;
+    $('case-kind').textContent = c.item.kind;
     $('case-title').textContent = c.title;
-    $('case-setup').textContent = c.setup;
-    $('progress-fill').style.width = ((run.index) / CASES.length) * 100 + '%';
+    $('case-setup').textContent = c.item.description;
+    $('progress-fill').style.width = (run.index / cases().length) * 100 + '%';
 
     const list = $('questions');
     list.innerHTML = '';
     for (const q of QUESTIONS) {
-      const li = document.createElement('li');
-      li.className = 'question';
+      const li = el('li', 'question');
       li.dataset.id = q.id;
-      const btn = document.createElement('button');
+      const btn = el('button', 'question-btn');
       btn.type = 'button';
-      btn.className = 'question-btn';
-      btn.innerHTML = '<span class="q-letter"></span><span class="q-text"></span>';
-      btn.querySelector('.q-letter').textContent = q.id;
-      btn.querySelector('.q-text').textContent = q.text;
+      btn.append(el('span', 'q-letter', q.id), el('span', 'q-text', q.text));
       btn.addEventListener('click', () => onPick(q.id));
-      const clue = document.createElement('p');
-      clue.className = 'clue';
+      const clue = el('p', 'clue');
       clue.hidden = true;
       li.append(btn, clue);
       list.appendChild(li);
@@ -181,8 +160,7 @@
     const left = Game.PICKS_PER_CASE - run.picks.length;
     $('pick-count').textContent = left === 0 ? 'All three asked' : left + ' left';
     for (const li of $('questions').children) {
-      const id = li.dataset.id;
-      const picked = run.picks.includes(id);
+      const picked = run.picks.includes(li.dataset.id);
       const btn = li.querySelector('button');
       li.classList.toggle('picked', picked);
       li.classList.toggle('unpicked', !picked && left === 0);
@@ -191,11 +169,11 @@
     }
   }
 
+  // Only the clue for a chosen question is ever shown before the verdict.
   function onPick(id) {
     if (!Game.pick(run, id)) return;
-    const li = $('questions').querySelector('[data-id="' + id + '"]');
-    const clue = li.querySelector('.clue');
-    clue.textContent = CASES[run.index].clues[id];
+    const clue = $('questions').querySelector('[data-id="' + id + '"] .clue');
+    clue.textContent = cases()[run.index].clues[id];
     clue.hidden = false;
     Sound.play('clue');
     updatePickState();
@@ -206,13 +184,13 @@
   }
 
   function onGuess(value) {
-    const c = CASES[run.index];
-    const result = Game.guess(run, c.answer, value);
+    const c = cases()[run.index];
+    const result = Game.guess(run, c.verdict, value);
     if (!result) return;
     for (const b of document.querySelectorAll('.verdict-btn')) b.disabled = true;
     updatePickState();
     updateScore();
-    Store.send(classCode, { type: 'case', caseIndex: result.index, correct: result.correct, picks: result.picks });
+    Store.send({ type: 'case', caseIndex: result.index, correct: result.correct, picks: result.picks });
 
     const banner = $('result-banner');
     banner.className = 'result-banner ' + (result.correct ? 'right' : 'wrong');
@@ -220,26 +198,24 @@
     banner.innerHTML = '';
     banner.append(
       el('span', 'stamp', result.correct ? 'Case cracked' : 'Fooled!'),
-      el('span', 'stamp-note', result.correct ? 'Point to you.' : 'Point to Fib.')
+      el('span', 'stamp-note', result.correct ? 'Point to the Detective.' : 'Point to Fib.')
     );
-    setFib($('reveal-fib'), result.correct ? 'annoyed' : 'gleeful');
-    $('reveal-speech').textContent = result.correct ? c.fibRight : c.fibWrong;
-    $('reveal-verdict').textContent = c.verdict;
+    Fib.set($('reveal-fib'), result.correct ? 'caught' : 'smug');
+    $('reveal-speech').textContent = result.correct ? c.fib.right : c.fib.wrong;
+    $('reveal-verdict').textContent = c.verdictNote;
     $('reveal-lesson').textContent = c.lesson;
 
     const others = $('other-clues');
     others.innerHTML = '';
     for (const q of QUESTIONS) {
       if (result.picks.includes(q.id)) continue;
-      const li = document.createElement('li');
-      const label = document.createElement('strong');
-      label.textContent = q.id + '. ' + q.text + ' ';
-      li.append(label, document.createTextNode(c.clues[q.id]));
+      const li = el('li');
+      li.append(el('strong', null, q.id + '. ' + q.text + ' '), document.createTextNode(c.clues[q.id]));
       others.appendChild(li);
     }
     $('reveal').querySelector('details').open = false;
 
-    $('next-btn').textContent = run.index + 1 >= CASES.length ? 'See my rank' : 'Next case';
+    $('next-btn').textContent = run.index + 1 >= cases().length ? 'See my rank' : 'Next case';
     $('verdict').hidden = true;
     $('reveal').hidden = false;
     scrollToNode($('reveal'), 'start');
@@ -251,274 +227,84 @@
     else renderCase();
   }
 
+  // The session ends here: no replay loop, streaks or rewards.
   function finishRun() {
     const s = Game.scores(run);
-    const rank = Game.rankFor(s.player);
-    Store.send(classCode, { type: 'finish', score: s.player });
+    const rank = Game.rankFor(s.player, cases().length);
+    Store.send({ type: 'finish', score: s.player });
     $('progress-fill').style.width = '100%';
     $('end-score').textContent = s.player;
-    $('end-total').textContent = CASES.length;
+    $('end-total').textContent = cases().length;
     $('end-rank').textContent = rank.name;
-    $('end-rank').dataset.rank = rank.name.toLowerCase();
-    setFib($('end-fib'), s.player >= 7 ? 'annoyed' : 'gleeful');
+    Fib.set($('end-fib'), rank.pose);
     $('end-speech').textContent = rank.fib;
 
     const recap = $('recap');
     recap.innerHTML = '';
     for (const r of run.results) {
-      const c = CASES[r.index];
-      const li = document.createElement('li');
-      li.className = r.correct ? 'right' : 'wrong';
-      const mark = document.createElement('span');
-      mark.className = 'recap-mark';
-      mark.textContent = r.correct ? '✓' : '✗';
+      const c = cases()[r.index];
+      const li = el('li', r.correct ? 'right' : 'wrong');
+      const mark = el('span', 'recap-mark', r.correct ? '✓' : '✗');
       mark.setAttribute('aria-label', r.correct ? 'right' : 'wrong');
-      const body = document.createElement('div');
-      const title = document.createElement('strong');
-      title.textContent = c.title;
-      const lesson = document.createElement('p');
-      lesson.textContent = c.lesson;
-      body.append(title, lesson);
+      const body = el('div');
+      body.append(el('strong', null, c.title), el('p', null, c.lesson));
       li.append(mark, body);
       recap.appendChild(li);
     }
+    run = null;
     show('end');
   }
 
   $('start-btn').addEventListener('click', startRun);
   $('howto-go').addEventListener('click', renderCase);
   $('next-btn').addEventListener('click', onNext);
-  $('again-btn').addEventListener('click', () => {
-    run = Game.newRun(CASES.length);
-    Store.send(classCode, { type: 'start' });
-    updateScore();
-    renderCase();
-  });
   for (const b of document.querySelectorAll('.verdict-btn')) {
     b.addEventListener('click', () => onGuess(b.dataset.guess));
   }
 
-  // ---- Teacher report --------------------------------------------------------
+  // ---- Options panel -----------------------------------------------------------
 
-  let reportClass = classCode;
-
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  }
-
-  function statTile(label, value, note) {
-    const tile = el('div', 'stat');
-    tile.append(el('p', 'stat-label', label), el('p', 'stat-value', value));
-    if (note) tile.append(el('p', 'stat-note', note));
-    return tile;
-  }
-
-  // Horizontal bars, one series, value at the bar tip.
-  function barChart(rows, caption) {
-    const fig = el('figure', 'bars');
-    fig.append(el('figcaption', 'bars-caption', caption));
-    const list = el('ol', 'bars-list');
-    for (const row of rows) {
-      const li = el('li', 'bar-row');
-      li.title = row.tooltip;
-      const label = el('span', 'bar-label', row.label);
-      const track = el('span', 'bar-track');
-      const bar = el('span', 'bar');
-      bar.style.width = (row.value === null ? 0 : row.value) + '%';
-      track.appendChild(bar);
-      const value = el('span', 'bar-value', row.value === null ? 'none yet' : row.value + '%');
-      li.append(label, track, value);
-      list.appendChild(li);
-    }
-    fig.appendChild(list);
-    return fig;
-  }
-
-  function renderReport(summary) {
-    const body = $('report-body');
-    body.innerHTML = '';
-
-    if (summary.answered === 0) {
-      const empty = el('div', 'empty');
-      empty.append(
-        el('p', null, 'No answers yet for class code ' + reportClass + '.'),
-        el('p', 'muted', 'Give students this class code on the start screen. Totals appear here as they play.')
-      );
-      body.appendChild(empty);
+  const signIn = el('button', 'text-link', 'Teacher sign-in');
+  signIn.type = 'button';
+  signIn.addEventListener('click', async () => {
+    panel.close(false);
+    if (Store.mode !== 'server') {
+      await ask('Teacher tools need the classroom server. This copy is a demo.', 'OK');
       return;
     }
-
-    const stats = el('div', 'stats');
-    stats.append(
-      statTile('Finished all ten', String(summary.finished), summary.started + ' started'),
-      statTile('Average score', summary.averageScore === null ? '–' : summary.averageScore + ' / 10', 'finished runs only'),
-      statTile('First ' + summary.trendWindow + ' cases', summary.early === null ? '–' : summary.early + '%', 'right'),
-      statTile('Last ' + summary.trendWindow + ' cases', summary.late === null ? '–' : summary.late + '%', 'right')
-    );
-    body.appendChild(stats);
-
-    if (summary.early !== null && summary.late !== null) {
-      const diff = summary.late - summary.early;
-      const trend = el('p', 'trend ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat'));
-      trend.textContent = diff > 0
-        ? 'Up ' + diff + ' points from the first cases to the last.'
-        : diff < 0
-          ? 'Down ' + Math.abs(diff) + ' points from the first cases to the last.'
-          : 'No change from the first cases to the last.';
-      body.appendChild(trend);
-    }
-
-    if (summary.suggestion) {
-      const s = summary.suggestion;
-      const card = el('section', 'next-lesson');
-      card.append(el('h3', null, 'Suggested next lesson'));
-      const p1 = el('p');
-      p1.append(
-        'Case ' + s.caseNumber + ', ',
-        el('strong', null, s.caseTitle),
-        ', fooled the most students (' + s.casePct + '% right). Start from its lesson: '
-      );
-      p1.append(el('em', null, s.lesson));
-      card.appendChild(p1);
-      if (s.question) {
-        card.append(el('p', null,
-          'Students asked question ' + s.question.id + ', "' + s.question.text + '", least often. Model it first next time.'));
-      }
-      body.appendChild(card);
-    }
-
-    const charts = el('div', 'charts');
-    charts.append(
-      barChart(
-        summary.perCase.map((c) => ({
-          label: c.number + '. ' + c.title,
-          value: c.pct,
-          tooltip: c.title + ': ' + c.correct + ' of ' + c.answered + ' right',
-        })),
-        'Right verdicts per case'
-      ),
-      barChart(
-        summary.picks.map((p) => ({
-          label: p.id + '. ' + p.text,
-          value: p.pct,
-          tooltip: p.text + ': picked ' + p.count + ' times',
-        })),
-        'Share of questions asked'
-      )
-    );
-    body.appendChild(charts);
-  }
-
-  async function loadReport() {
-    $('report-class').value = reportClass;
-    const shared = Store.mode === 'shared';
-    $('report-mode').textContent = shared
-      ? 'Anonymous totals from every device that used class code ' + reportClass + '.'
-      : 'Anonymous totals from this device only. Run server.js to combine totals across student devices.';
-    $('report-reset').hidden = shared;
-    $('report-body').innerHTML = '<p class="muted">Loading…</p>';
-    try {
-      const totals = await Store.getTotals(reportClass);
-      renderReport(Game.summarize(totals, CASES, QUESTIONS));
-    } catch (err) {
-      $('report-body').innerHTML = '';
-      $('report-body').appendChild(el('p', 'error', err.message));
-    }
-  }
-
-  $('report-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    reportClass = Store.normalizeClassCode($('report-class').value);
-    loadReport();
+    if (await leaveGame()) window.location.href = 'sign-in';
   });
-  $('report-refresh').addEventListener('click', loadReport);
-  $('report-reset').addEventListener('click', async () => {
-    if (!(await ask('Clear the totals for ' + reportClass + ' on this device? This cannot be undone.', 'Clear totals'))) return;
-    Store.resetLocal(reportClass);
-    loadReport();
-  });
-
-  // ---- Options panel ---------------------------------------------------------
-
-  const panel = $('options-panel');
-  const tab = $('options-tab');
-
-  function syncOptions() {
-    const o = Options.get();
-    for (const input of panel.querySelectorAll('input[type="radio"]')) {
-      const key = input.name.replace('opt-', '');
-      input.checked = o[key] === input.value;
-    }
-    for (const input of panel.querySelectorAll('input[data-option]')) {
-      input.checked = o[input.dataset.option];
-    }
-    $('opt-theme-group').disabled = o.highContrast;
-    $('opt-theme-note').hidden = !o.highContrast;
-  }
-
-  function openOptions() {
-    syncOptions();
-    panel.hidden = false;
-    $('options-scrim').hidden = false;
-    tab.setAttribute('aria-expanded', 'true');
-    $('options-close').focus();
-  }
-
-  function closeOptions(returnFocus) {
-    if (panel.hidden) return;
-    panel.hidden = true;
-    $('options-scrim').hidden = true;
-    tab.setAttribute('aria-expanded', 'false');
-    if (returnFocus) tab.focus();
-  }
-
-  tab.addEventListener('click', openOptions);
-  $('options-close').addEventListener('click', () => closeOptions(true));
-  $('options-scrim').addEventListener('click', () => closeOptions(true));
-
-  panel.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeOptions(true);
-      return;
-    }
-    if (e.key !== 'Tab') return;
-    // Keep keyboard focus inside the open panel.
-    const focusable = Array.from(panel.querySelectorAll('button, input')).filter((n) => !n.disabled && n.offsetParent !== null);
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  });
-
-  panel.addEventListener('change', (e) => {
-    const input = e.target;
-    if (input.type === 'radio') {
-      Options.set(input.name.replace('opt-', ''), input.value);
-    } else if (input.dataset.option) {
-      Options.set(input.dataset.option, input.checked);
-      if (input.dataset.option === 'sound' && input.checked) Sound.play('right');
-    }
-    syncOptions();
-  });
-
-  $('teacher-signin').addEventListener('click', () => {
-    closeOptions(false);
-    navigate('report');
-  });
+  panel = window.AIDetectiveOptionsPanel.mount({ footer: signIn });
 
   // ---- Boot --------------------------------------------------------------------
 
-  setFib(document.querySelector('#screen-home .fib-avatar'), 'smug');
-  Store.init(CASES.length).then(() => {
-    if (location.hash === '#report') show('report');
-  });
-  goHome();
+  async function boot() {
+    show('home');
+    // A self-contained demo page carries no art files; use the placeholders.
+    if (!document.getElementById('demo-data')) await Fib.load('');
+    Fib.set($('home-fib'), 'scheming');
+    const mode = await Store.init();
+    if (mode === 'demo') {
+      $('demo-note').hidden = false;
+      try {
+        useCaseSet(await Store.demoCaseSet(), null);
+      } catch (e) {
+        $('demo-note').textContent = "This demo couldn't load its cases. Open it through the classroom server instead.";
+      }
+      return;
+    }
+    // A join link looks like /?class=ABC234. Take the code, then tidy the URL.
+    const params = new URLSearchParams(window.location.search);
+    const fromLink = Store.cleanCode(params.get('class'));
+    if (params.has('class')) history.replaceState(null, '', window.location.pathname);
+    const code = fromLink || Store.savedCode();
+    if (code) {
+      $('class-code').value = code;
+      await joinWith(code);
+    } else {
+      showJoinForm('');
+    }
+  }
+
+  boot();
 })();

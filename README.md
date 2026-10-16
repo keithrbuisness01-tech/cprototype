@@ -1,104 +1,232 @@
-# AI Detective (prototype)
+# AI Detective
 
-A classroom game that teaches students to judge whether something was made by a
-person or by AI. It follows the design in the *AI Detective: ten test cases* and
-*customer profile and business model canvas* docs.
+A classroom game for students aged 11 to 13 (Grade 6 in year one). Students
+judge whether an item was made by a person or by AI, competing against Fib, a
+prankster rival. Teachers sign in to see anonymous class totals, share a
+one-page results summary, and get an AI-suggested next lesson.
 
-- **Ten cases.** Half are AI-made fakes, and half are real things Fib hopes you'll doubt.
-- **Six detective questions.** The player asks three per case, and each reveals one clue.
-  Some clues help, some don't, and some mislead.
-- **Verdict.** The player decides between "Made by a person" and "Made by AI". Fib, the
-  rival, gloats or grumbles, and the lesson line follows.
-- **Score and rank.** The player scores a point for each right verdict and Fib scores one
-  for each wrong one. Ranks: 0–3 Rookie, 4–6 Detective, 7–8 Inspector, 9–10 Chief.
-- **One-screen class report.** It shows anonymous totals: how many students finished, the
-  average score, the first three cases against the last three, right answers per case,
-  which questions students ask, and one suggested next lesson.
+## How it works
 
-The game uses no live AI, has no accounts, and stores no names. Only counts are kept.
+**Students**
+- Join with a class code. Usually they follow the teacher's join link and the
+  code is already filled in. The code opens the game and nothing else.
+- Each case shows one item: a photo, message, homework answer and so on.
+  Students pick three of six fixed detective questions and see only those
+  clues. Then they give a verdict, Person or AI. Fib reveals the answer with his
+  right or wrong line, followed by the lesson.
+- Scoreboard: Detective vs Fib. Ranks: Rookie, Detective, Inspector, Chief.
+  A session is one pass through the case set and then ends. There are no
+  streaks, random rewards or replay loops.
+- No accounts, no names, no free-text input (only the six-character class code
+  box), no live AI, no ads, analytics or trackers.
+
+**Teachers**
+- Sign in with a school Google or Microsoft account. Only emails on the
+  approved list get in. Everyone else is refused, including students with
+  school accounts.
+- After 10 idle minutes (configurable) the server signs the teacher out, with a
+  warning a minute before.
+- **Class report (one screen):** anonymous totals, scores on early vs later
+  cases, which questions the class skipped, which cases fooled them, and one
+  suggested next step.
+- **One-page results summary:** a printable page, plus an optional read-only
+  share link that shows only anonymous totals, expires after 30 days, and can
+  be turned off.
+- **AI lesson planner:** calls Claude from the server only. It receives only the
+  class's anonymous totals, never the class name, join code, teacher email or
+  anything about a student. A monthly spending cap applies.
+- **Options menu (corner tab):** class code (show, copy link, reset, expire),
+  grade level and case set, mute sound for the class, share the join link and
+  results summary, the signed-in email (partly hidden), a support link, and
+  sign out.
+
+**Options menu for students:** text size, sound, reduced motion, high contrast
+and color theme, saved in the browser only.
 
 ## Run it
 
-**Classroom mode (recommended).** This needs Node 18 or later and has no dependencies:
+Needs Node 18 or later.
 
 ```sh
-npm start            # or: node server.js
+npm install
+cp config/approved-teachers.example.txt config/approved-teachers.txt   # then add emails
+cp .env.example .env    # fill in, then load it however you run Node
+npm start
 ```
 
-Open <http://localhost:8080>. Students enter the class code their teacher gives
-them. The teacher opens **Teacher: class report** (or `/#report`) and enters the
-same code. Every device using that code adds to one set of totals, which the
-server saves in `data/totals.json`. Set `PORT` or `DATA_FILE` to change the port
-or the file.
+Students open `PUBLIC_URL` and join with a code. Teachers go to
+`PUBLIC_URL/sign-in`.
 
-**Single-device mode.** Open `index.html` directly in a browser, or host the
-folder on any static host such as GitHub Pages. The game plays the same way, but
-the class report only counts games played in that browser.
+Run it behind HTTPS in production. Session cookies are marked `Secure` only
+when `PUBLIC_URL` starts with `https://`. If a proxy terminates TLS, set
+`TRUST_PROXY=1` so rate limits use the real client address.
 
-## Options
+### Configuration
 
-A tab in the bottom-right corner opens the Options panel on every screen:
+| Variable | What it does | Default |
+|---|---|---|
+| `PUBLIC_URL` | The site's public address. Sign-in redirects use it. | `http://localhost:8080` |
+| `PORT` | Port to listen on | `8080` |
+| `DATA_DIR` | Where class records, totals and AI spending are saved | `./data` |
+| `APPROVED_TEACHERS_FILE` | The approved list, one email per line | `config/approved-teachers.txt` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Turns on Google sign-in | off |
+| `GOOGLE_ALLOWED_DOMAINS` | Optional comma list of school domains | any Workspace domain |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | Turns on Microsoft sign-in | off |
+| `MICROSOFT_ALLOWED_TENANTS` | Optional comma list of school tenant IDs | any work or school tenant |
+| `TEACHER_IDLE_MINUTES` | Automatic sign-out after this many idle minutes | `10` |
+| `TEACHER_SESSION_MAX_HOURS` | Longest a sign-in lasts, active or not | `8` |
+| `CLASS_CODE_DAYS` | How long a new or reset class code works | `180` |
+| `SHARE_LINK_DAYS` | How long a results share link works | `30` |
+| `SUPPORT_URL` | `https://` link shown in the teacher Options menu | none |
+| `ANTHROPIC_API_KEY` | Turns on the lesson planner. Server only. | off |
+| `AI_MONTHLY_CAP_USD` | Lesson-planner spending cap per calendar month (UTC) | `20` |
+| `TRUST_PROXY` | `1` to read the client address from `X-Forwarded-For` | off |
 
-- **Text size:** Standard, Large or Extra large.
-- **Sound:** off by default. Three short effects are made in the browser, with
-  no audio files: a tick when a clue opens, a chime when you're right, and
-  Fib's "wah-wah" when you're fooled.
-- **Reduced motion:** starts matched to the device's own setting.
-- **High contrast:** black and white with thicker outlines. It overrides the
-  color theme while on.
-- **Color theme:** Case Board, Pink & Blue, Night Shift or Calm.
+### Setting up sign-in
 
-Choices are saved in the browser only (`js/options.js`) and are never sent to
-the server. The panel has no text boxes. "Teacher sign-in" at the bottom opens
-the class report for now.
+Both providers use the redirect URI `PUBLIC_URL/auth/<provider>/callback`.
 
-## Design
+- **Google:** create an OAuth client of type "Web application" and add
+  `PUBLIC_URL/auth/google/callback`. Only Google Workspace accounts (school
+  accounts) are accepted, and only with a verified email.
+- **Microsoft (Entra ID):** register a multi-tenant app for "accounts in any
+  organizational directory" and add `PUBLIC_URL/auth/microsoft/callback` as a
+  Web redirect URI. In **Token configuration**, add the optional ID-token claims
+  **`email`** and **`xms_edov`**. The app accepts a Microsoft email only when
+  `xms_edov` confirms the school's tenant owns that email's domain. Without
+  this, any tenant could claim someone else's address. Personal Microsoft
+  accounts are refused.
 
-The look is a white case board, with ink outlines and hard offset shadows like
-evidence cards pinned to a board. The colors are two teams:
+The server checks every sign-in token's signature against the provider's
+published keys, along with its issuer, audience, expiry and nonce. It uses
+PKCE and a one-time state tied to a browser cookie.
 
-- **Neon blue is the player:** your score, the questions you picked, and the
-  "Case cracked" banner.
-- **Deep purple is Fib:** his score and speech bubbles, plus a neon purple
-  "Fooled!" banner when he takes the point.
-- **Pink only decorates** (Fib's hat band) and never carries text.
+### The approved list
 
-Fonts come from Google Fonts: Bungee for headings, Atkinson Hyperlegible for
-body text (designed to be easy to read), and Courier Prime for case files and
-clues. Without internet, the page falls back to system fonts.
+`config/approved-teachers.txt` holds one email per line, and `#` starts a
+comment. Git ignores the file. It's re-read whenever it changes, so adding
+someone works at once, and removing someone ends their session on their next
+request.
+
+## Privacy
+
+- **What a student device sends:** the class code, the case set id, and
+  anonymous answers (which case, right or wrong, which three question letters,
+  and the final score). The server refuses requests with any other field.
+  Students get no cookies.
+- **What the server stores:** counts per class and case set (`data/totals.json`),
+  teacher-owned class records (`data/classes.json`), and planner spending
+  (`data/ai-spend.json`). There are no per-student records.
+- **Third parties:** none for students. Fonts are bundled (`assets/fonts`, OFL
+  licensed). Every response carries a Content Security Policy that allows only
+  this site.
+- **Lesson planner:** see `plannerInput()` in `lib/planner.js` for exactly what
+  Claude receives. The browser never contacts Anthropic.
+
+## Lesson planner and the spending cap
+
+- **Model:** Claude Opus 5.5 (`claude-opus-5-5`), called with the Anthropic SDK
+  from the server.
+- **Fallback:** the request enables Anthropic's server-side fallback
+  (`fallbacks: "default"`), so a request the model declines is retried on
+  another model automatically.
+- **The cap:** before every call, the server works out the worst-case cost and
+  refuses the call if it could take the month over `AI_MONTHLY_CAP_USD`. The
+  worst case is two full attempts, priced at the fallback models' higher rate
+  of $5 / $25 per million tokens: about $0.41 per call. Afterwards it records
+  the actual cost from the usage the API reports. A typical call costs a few
+  cents.
+- **Limits:** one plan at a time per teacher, and a 20-class limit per teacher.
+
+## Case files
+
+Case sets live in `cases/` as JSON and are listed in `cases/sets.json`.
+Adding a set or updating cases needs no code changes. The server refuses to
+start if a file breaks the rules in `js/casedata.js`. Each case looks like this:
+
+```json
+{
+  "id": "highway-shark",
+  "title": "The shark on the highway",
+  "grade": 6,
+  "item": { "kind": "photo", "description": "During a real flood, a photo shows a shark ..." },
+  "clues": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "...", "F": "..." },
+  "verdict": "ai",
+  "verdictNote": "AI. The flood was real. The shark was not.",
+  "lesson": "Lots of shares can all lead back to one source. ...",
+  "fib": { "right": "Fine. Two news sites, one source. You spotted it.", "wrong": "Gotcha! ..." }
+}
+```
+
+Rules:
+- One clue for each question, A to F.
+- The verdict is `person` or `ai`.
+- The item kind comes from the list in `js/casedata.js`.
+- Every case has the set's grade.
+- Between 40% and 60% of a set's cases are AI-made.
+
+## Fib's art
+
+Fib has five poses: **scheming** (start screen), **smug** (when he wins a
+point), **caught** (when the student is right), **sulking** (end of a good
+session), and **impressed** (Chief rank). Each pose shows a hand-coded
+placeholder until the illustrator's file is in `assets/fib/` and named in
+`assets/fib/poses.json`. Use hand-drawn art only, not AI-generated images.
+
+## Demo mode
+
+Opened as a plain file or from a static host, the game runs as a demo with the
+default case set. It sends nothing anywhere and has no teacher features.
 
 ## Test
 
 ```sh
-npm test
+npm test                 # 69 tests, no network needed
+npm run check:network    # plays a full session in Chromium and checks every request
 ```
 
-The tests cover the case data, the scoring and ranks, the three-question rule,
-the anonymous totals, the report maths, and the server, including a check that
-it serves only the game's own files.
+The tests cover:
+- **Sign-in:** a stand-in provider that issues real signed tokens, used to
+  check forged, expired and wrong-audience tokens, nonce and state replay, and
+  non-approved accounts.
+- **Every teacher route,** read from the server's route table: refused when
+  signed out, for non-approved accounts, after the idle timeout, for another
+  teacher's class, and for cross-site writes.
+- **Student requests:** what they may contain and which codes are accepted.
+- **The planner:** exactly what is sent, the cap, and error handling.
+- **Case data, game rules and the report maths.**
+- **Options,** and contrast in every theme.
+
+`check:network` needs Playwright with Chromium (`npm i -g playwright`).
 
 ## Files
 
 | Path | What it is |
 |---|---|
-| `index.html`, `css/styles.css` | Screens and styling |
-| `js/cases.js` | The six questions and ten cases. Edit cases here. |
-| `js/game.js` | Rules and report maths, shared by the browser and the server |
-| `js/store.js` | Saves totals to the server, or to the browser when there's no server |
-| `js/options.js` | Student options, saved in the browser only and applied before the page paints |
-| `js/sound.js` | The three sound effects, played only when sound is on |
-| `js/app.js` | Screen flow and interaction |
-| `server.js` | Optional zero-dependency server for shared class totals |
+| `index.html`, `js/app.js` | Student game |
+| `js/store.js` | Every request a student device makes |
+| `js/casedata.js` | The six questions and the case-file rules |
+| `js/game.js` | Rules, ranks and report maths (shared with the server) |
+| `js/fib.js`, `assets/fib/` | Fib's poses and art slots |
+| `js/options.js`, `js/options-panel.js`, `js/sound.js` | Options menu, saved in the browser |
+| `teacher/` | Teacher page, served only to signed-in approved teachers |
+| `sign-in.html`, `js/sign-in.js` | Teacher sign-in page |
+| `server.js` | Routes; every teacher route is checked in one place |
+| `lib/auth.js` | Google and Microsoft sign-in, sessions, approved list |
+| `lib/classes.js` | Class codes, settings, share links |
+| `lib/planner.js` | AI lesson planner and spending cap |
+| `lib/summary.js` | One-page results summary |
+| `cases/` | Case sets (JSON) |
 
 ## Known gaps
 
-- The cases were made harder for ages 11 to 13: neutral setups, no clue that
-  gives the answer away on its own, red-herring clues in every case, and an
-  answer order with no pattern. They haven't been tried with students yet, and
-  they now differ from the *ten test cases* doc.
-- Fib is a placeholder drawing until the illustrator's art exists. The sound
-  effects are placeholders until the musician's work exists.
-- "Teacher sign-in" opens the class report; there is no real sign-in yet.
-- Anyone who knows a class code can add to its totals. That's acceptable for a
-  pilot with teachers you know, but needs sign-in before schools pay.
-- To clear the server's totals, use a new class code or delete `data/totals.json`.
+- Real Google and Microsoft sign-in hasn't been tried against live accounts.
+  The flow is tested against a stand-in provider that follows the same
+  protocol.
+- The lesson planner hasn't made a real Claude call yet. It's tested with a
+  fake client.
+- Sessions are kept in memory, so restarting the server signs teachers out.
+- With very small classes (one or two players), class totals can point to an
+  individual. Consider holding back the report until about five students
+  have played.
+- The cases haven't been tried with students yet.

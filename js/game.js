@@ -7,16 +7,29 @@
   const TREND_WINDOW = 3;
 
   const RANKS = [
-    { name: 'Rookie', min: 0, fib: "Ha! I fooled you over and over. Come back when you've practised your questions." },
-    { name: 'Detective', min: 4, fib: 'Not bad. But I still slipped a few past you. Next time I will slip in more.' },
-    { name: 'Inspector', min: 7, fib: "Hmph. You're getting annoying. I'll have to make my fakes better." },
-    { name: 'Chief', min: 9, fib: "Impossible! Fine. You're the Chief... for now." },
+    { name: 'Rookie', min: 0, pose: 'smug', fib: "Ha! I fooled you over and over. Come back when you've practised your questions." },
+    { name: 'Detective', min: 0.4, pose: 'smug', fib: 'Not bad. But I still slipped a few past you. Next time I will slip in more.' },
+    { name: 'Inspector', min: 0.7, pose: 'sulking', fib: "Hmph. You're getting annoying. I'll have to make my fakes better." },
+    { name: 'Chief', min: 0.9, pose: 'impressed', fib: "Impossible! Fine. You're the Chief... for now." },
   ];
 
-  function rankFor(score) {
+  // Ranks are shares of the cases in the set: with 10 cases that is
+  // 0-3 Rookie, 4-6 Detective, 7-8 Inspector, 9-10 Chief.
+  const lowest = (min, total) => Math.max(0, Math.ceil(min * total - 1e-9));
+
+  function rankFor(score, total = 10) {
     let rank = RANKS[0];
-    for (const r of RANKS) if (score >= r.min) rank = r;
+    for (const r of RANKS) if (score >= lowest(r.min, total)) rank = r;
     return rank;
+  }
+
+  // [{ name, from, to }] score bands for a set of `total` cases.
+  function rankBands(total) {
+    return RANKS.map((r, i) => ({
+      name: r.name,
+      from: lowest(r.min, total),
+      to: i + 1 < RANKS.length ? lowest(RANKS[i + 1].min, total) - 1 : total,
+    }));
   }
 
   // ---- One player's run -------------------------------------------------
@@ -128,6 +141,9 @@
     const perCase = totals.cases.map((c, i) => ({
       number: i + 1,
       title: caseList[i] ? caseList[i].title : 'Case ' + (i + 1),
+      kind: caseList[i] && caseList[i].item ? caseList[i].item.kind : null,
+      verdict: caseList[i] ? caseList[i].verdict : null,
+      lesson: caseList[i] ? caseList[i].lesson : null,
       answered: c.answered,
       correct: c.correct,
       pct: pct(c.correct, c.answered),
@@ -140,7 +156,7 @@
 
     const rankCounts = RANKS.map((r) => ({ name: r.name, count: 0 }));
     totals.scores.forEach((count, score) => {
-      const idx = RANKS.indexOf(rankFor(score));
+      const idx = RANKS.indexOf(rankFor(score, totals.cases.length));
       rankCounts[idx].count += count;
     });
 
@@ -149,6 +165,13 @@
       const q = questionList.find((x) => x.id === id);
       return { id, text: q ? q.text : id, count: totals.picks[id], pct: pct(totals.picks[id], pickTotal) };
     });
+
+    // How often the class left each question unasked, out of every case answered.
+    const skipped = picks
+      .map((p) => ({ id: p.id, text: p.text, pct: answered ? Math.round(100 - (100 * p.count) / answered) : null }))
+      .sort((a, b) => (b.pct || 0) - (a.pct || 0));
+    // Cases most of the class got wrong, worst first.
+    const fooledBy = perCase.filter((c) => c.pct !== null && c.pct < 50).sort((a, b) => a.pct - b.pct);
 
     let hardest = null;
     for (const c of perCase) {
@@ -182,6 +205,8 @@
       trendWindow: window,
       perCase,
       picks,
+      skipped,
+      fooledBy,
       rankCounts,
       suggestion,
     };
@@ -192,6 +217,7 @@
     QUESTION_IDS,
     RANKS,
     rankFor,
+    rankBands,
     newRun,
     canPick,
     pick,

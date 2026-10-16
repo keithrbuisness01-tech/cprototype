@@ -43,7 +43,10 @@
   };
 
   function play(name) {
-    if (!root.AIDetectiveOptions.get().sound || !SOUNDS[name]) return;
+    // Off unless the student turned it on, and always off when the teacher
+    // muted the class.
+    const muted = root.AIDetectiveClass && root.AIDetectiveClass.soundMuted;
+    if (muted || !root.AIDetectiveOptions.get().sound || !SOUNDS[name]) return;
     try {
       const c = context();
       if (c) SOUNDS[name](c, c.currentTime + 0.01);

@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Detective</title>
   <meta name="description" content="A classroom game where students judge whether content was made by a person or by AI.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bungee&family=Courier+Prime:wght@400;700&display=swap">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/options.js"></script>
 </head>
@@ -18,7 +16,7 @@
       <span class="brand-name">AI Detective</span>
     </button>
     <div class="scoreboard" id="scoreboard" hidden>
-      <span class="score-side you"><span class="score-name">You</span> <strong id="score-you">0</strong></span>
+      <span class="score-side you"><span class="score-name">Detective</span> <strong id="score-you">0</strong></span>
       <span class="score-side fib"><strong id="score-fib">0</strong> <span class="score-name">Fib</span></span>
     </div>
   </header>
@@ -28,22 +26,35 @@
     <section class="screen" id="screen-home" aria-labelledby="home-title">
       <div class="hero">
         <div class="hero-copy">
-          <p class="kicker">10 cases <span aria-hidden="true">/</span> 6 questions <span aria-hidden="true">/</span> 1 rival</p>
+          <p class="kicker"><span id="case-count">10</span> cases <span aria-hidden="true">/</span> 6 questions <span aria-hidden="true">/</span> 1 rival</p>
           <h1 id="home-title"><span class="t-ai">AI</span> <span class="t-det">Detective</span></h1>
           <p class="lead">Read each case. Ask three of the six detective questions. Then decide: made by a person, or made by AI?</p>
-        <div class="class-code">
-          <label for="class-code">Class code <span class="muted">(from your teacher)</span></label>
-          <input id="class-code" name="class-code" autocomplete="off" spellcheck="false" maxlength="20" placeholder="MY-CLASS">
-        </div>
-        <div class="actions">
-          <button class="btn primary big" type="button" id="start-btn">Open the first case</button>
-        </div>
+
+          <!-- Joining a class (classroom server only). -->
+          <form class="join" id="join" hidden>
+            <label for="class-code">Class code</label>
+            <div class="code-row">
+              <input id="class-code" name="class-code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="[A-HJKMNP-Z2-9]{6}" aria-describedby="join-help">
+              <button class="btn primary" type="submit" id="join-btn">Join</button>
+            </div>
+            <p class="fine-print" id="join-help">Six letters and numbers. Your teacher's join link fills this in for you.</p>
+            <p class="join-error" id="join-error" role="alert" hidden></p>
+          </form>
+          <div class="joined" id="joined" hidden>
+            <p><span class="joined-badge">Class joined</span> <span id="joined-detail"></span></p>
+            <button class="text-link" type="button" id="change-class">Use a different code</button>
+          </div>
+          <p class="demo-note" id="demo-note" hidden><strong>Demo.</strong> Nothing you do here is sent anywhere.</p>
+
+          <div class="actions">
+            <button class="btn primary big" type="button" id="start-btn" disabled>Open the first case</button>
+          </div>
           <p class="fine-print">No names, no accounts, no live AI. Only anonymous class totals are kept.</p>
         </div>
         <div class="hero-fib">
-          <div class="fib-avatar big" data-fib="smug"></div>
+          <div class="fib-avatar big" id="home-fib"></div>
           <blockquote class="speech">
-            I'm <strong>Fib</strong>. I set up ten cases for you. Some were made by AI. Some are real things I'm
+            I'm <strong>Fib</strong>. I set up these cases for you. Some were made by AI. Some are real things I'm
             hoping you'll doubt. Bet you can't tell which is which.
           </blockquote>
         </div>
@@ -59,8 +70,8 @@
         <li><strong>Give your verdict:</strong> made by a person, or made by AI.</li>
         <li><strong>Fib reveals the answer</strong> and you get the lesson.</li>
       </ol>
-      <p>You score a point for every right verdict. Fib scores one for every wrong one.</p>
-      <p class="ranks-line"><span>0–3 Rookie</span><span>4–6 Detective</span><span>7–8 Inspector</span><span>9–10 Chief</span></p>
+      <p>The Detective scores a point for every right verdict. Fib scores one for every wrong one.</p>
+      <p class="ranks-line" id="ranks-line"></p>
       <div class="actions">
         <button class="btn primary big" type="button" id="howto-go">Let's go</button>
       </div>
@@ -71,6 +82,7 @@
       <div class="progress" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
       <article class="case-file">
         <p class="case-tag" id="case-tag">Case 1 of 10</p>
+        <p class="case-kind" id="case-kind"></p>
         <h2 id="case-title">Case title</h2>
         <p class="case-setup" id="case-setup"></p>
       </article>
@@ -107,10 +119,10 @@
       </div>
     </section>
 
-    <!-- End of run -->
+    <!-- End of the session -->
     <section class="screen" id="screen-end" aria-labelledby="end-title" hidden>
       <div class="end-head">
-        <p class="eyebrow">Final score</p>
+        <p class="eyebrow">Case closed · final score</p>
         <h2 id="end-title"><span id="end-score">0</span> out of <span id="end-total">10</span></h2>
         <p class="rank-badge" id="end-rank">Rookie</p>
       </div>
@@ -120,31 +132,9 @@
       </div>
       <h3>Your cases</h3>
       <ol class="recap" id="recap"></ol>
+      <p class="session-end">That's the end of today's cases. Your teacher will take it from here.</p>
       <div class="actions">
-        <button class="btn primary" type="button" id="again-btn">Play again</button>
         <button class="btn ghost" type="button" data-go="home">Back to start</button>
-      </div>
-    </section>
-
-    <!-- Teacher report -->
-    <section class="screen report" id="screen-report" aria-labelledby="report-title" hidden>
-      <div class="report-head">
-        <div>
-          <p class="eyebrow">Teacher view</p>
-          <h2 id="report-title">Class report</h2>
-        </div>
-        <form class="report-form" id="report-form">
-          <label for="report-class">Class code</label>
-          <input id="report-class" autocomplete="off" spellcheck="false" maxlength="20">
-          <button class="btn primary small" type="submit">Show</button>
-        </form>
-      </div>
-      <p class="report-mode" id="report-mode"></p>
-      <p class="report-signin">Teacher sign-in isn't built yet. Until it is, anyone with the class code can open this report.</p>
-      <div id="report-body"></div>
-      <div class="actions report-actions">
-        <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
-        <button class="btn ghost small danger" type="button" id="report-reset" hidden>Clear this device's totals</button>
       </div>
     </section>
   </main>
@@ -159,63 +149,13 @@
     </div>
   </div>
 
-  <!-- Options: a tab in the bottom-right corner opens the panel. -->
-  <button class="options-tab" id="options-tab" type="button" aria-expanded="false" aria-controls="options-panel">
-    <span class="options-tab-icon" aria-hidden="true"></span>
-    <span>Options</span>
-  </button>
-  <div class="options-scrim" id="options-scrim" hidden></div>
-  <section class="options-panel" id="options-panel" role="dialog" aria-modal="true" aria-labelledby="options-title" hidden>
-    <div class="options-head">
-      <h2 id="options-title">Options</h2>
-      <button class="options-close" id="options-close" type="button" aria-label="Close options">&times;</button>
-    </div>
-
-    <fieldset class="opt-group">
-      <legend>Text size</legend>
-      <div class="segmented">
-        <label><input type="radio" name="opt-textSize" value="standard"><span><b class="ts ts-1">Aa</b>Standard</span></label>
-        <label><input type="radio" name="opt-textSize" value="large"><span><b class="ts ts-2">Aa</b>Large</span></label>
-        <label><input type="radio" name="opt-textSize" value="xlarge"><span><b class="ts ts-3">Aa</b>Extra large</span></label>
-      </div>
-    </fieldset>
-
-    <div class="opt-switches">
-      <div class="opt-switch">
-        <label for="opt-sound">Sound <small>Clicks, a chime and Fib's "wah-wah"</small></label>
-        <input type="checkbox" role="switch" id="opt-sound" data-option="sound">
-      </div>
-      <div class="opt-switch">
-        <label for="opt-reducedMotion">Reduced motion <small>Stops wobbles, spins and stamps</small></label>
-        <input type="checkbox" role="switch" id="opt-reducedMotion" data-option="reducedMotion">
-      </div>
-      <div class="opt-switch">
-        <label for="opt-highContrast">High contrast <small>Black and white, thicker outlines</small></label>
-        <input type="checkbox" role="switch" id="opt-highContrast" data-option="highContrast">
-      </div>
-    </div>
-
-    <fieldset class="opt-group" id="opt-theme-group">
-      <legend>Color theme</legend>
-      <p class="opt-note" id="opt-theme-note" hidden>High contrast is on, so the color theme is paused.</p>
-      <div class="theme-grid">
-        <label><input type="radio" name="opt-theme" value="case-board"><span><i class="swatch" style="--a:#00c8ff;--b:#3d1a78;--c:#ffffff"></i>Case Board</span></label>
-        <label><input type="radio" name="opt-theme" value="pink-blue"><span><i class="swatch" style="--a:#00c8ff;--b:#a3166f;--c:#ffffff"></i>Pink &amp; Blue</span></label>
-        <label><input type="radio" name="opt-theme" value="night-shift"><span><i class="swatch" style="--a:#00c8ff;--b:#7a3cf0;--c:#14102a"></i>Night Shift</span></label>
-        <label><input type="radio" name="opt-theme" value="calm"><span><i class="swatch" style="--a:#8fd8ef;--b:#4a3a75;--c:#faf9fc"></i>Calm</span></label>
-      </div>
-    </fieldset>
-
-    <p class="opt-note">Saved on this device only.</p>
-    <div class="options-foot">
-      <button class="text-link" type="button" id="teacher-signin">Teacher sign-in</button>
-    </div>
-  </section>
-
-  <script src="js/cases.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/casedata.js"></script>
   <script src="js/game.js"></script>
   <script src="js/store.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/fib.js"></script>
+  <script src="js/options-panel.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

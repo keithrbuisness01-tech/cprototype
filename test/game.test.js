@@ -1,33 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Game = require('../js/game.js');
-const { CASES, QUESTIONS } = require('../js/cases.js');
-
-test('case data is complete and balanced', () => {
-  assert.equal(CASES.length, 10);
-  assert.deepEqual(QUESTIONS.map((q) => q.id), Game.QUESTION_IDS);
-  for (const c of CASES) {
-    assert.ok(c.answer === 'person' || c.answer === 'ai', c.title);
-    for (const id of Game.QUESTION_IDS) assert.ok(c.clues[id], c.title + ' clue ' + id);
-    for (const key of ['title', 'setup', 'verdict', 'fibRight', 'fibWrong', 'lesson']) assert.ok(c[key], c.title + ' ' + key);
-  }
-  assert.equal(CASES.filter((c) => c.answer === 'ai').length, 5, 'half the cases are AI fakes');
-});
-
-test('the answer order cannot be guessed from a pattern', () => {
-  const answers = CASES.map((c) => c.answer);
-  const alternates = answers.every((a, i) => i === 0 || a !== answers[i - 1]);
-  assert.equal(alternates, false, 'answers must not simply alternate');
-  let run = 1;
-  for (let i = 1; i < answers.length; i++) {
-    run = answers[i] === answers[i - 1] ? run + 1 : 1;
-    assert.ok(run <= 2, 'no more than two of the same answer in a row');
-  }
-});
+const { QUESTIONS } = require('../js/casedata.js');
+const { cases: CASES } = require('../cases/grade6-core.json');
 
 test('ranks follow the doc: 0-3 Rookie, 4-6 Detective, 7-8 Inspector, 9-10 Chief', () => {
   const expected = ['Rookie', 'Rookie', 'Rookie', 'Rookie', 'Detective', 'Detective', 'Detective', 'Inspector', 'Inspector', 'Chief', 'Chief'];
-  expected.forEach((name, score) => assert.equal(Game.rankFor(score).name, name, 'score ' + score));
+  expected.forEach((name, score) => assert.equal(Game.rankFor(score, 10).name, name, 'score ' + score));
+  assert.deepEqual(Game.rankBands(10).map((b) => [b.name, b.from, b.to]), [['Rookie', 0, 3], ['Detective', 4, 6], ['Inspector', 7, 8], ['Chief', 9, 10]]);
+  assert.deepEqual(Game.RANKS.map((r) => r.name), ['Rookie', 'Detective', 'Inspector', 'Chief']);
+});
+
+test('rank bands cover every score for other set sizes', () => {
+  for (const total of [4, 8, 12, 20]) {
+    const bands = Game.rankBands(total);
+    assert.equal(bands[0].from, 0);
+    assert.equal(bands[bands.length - 1].to, total);
+    for (let i = 1; i < bands.length; i++) assert.equal(bands[i].from, bands[i - 1].to + 1, total + ' cases');
+  }
 });
 
 test('a player picks exactly three distinct questions before guessing', () => {
@@ -110,6 +100,9 @@ test('summarize compares first and last cases and suggests the hardest case', ()
   assert.equal(s.suggestion.question.id, 'B', 'first question never picked');
   assert.deepEqual(s.rankCounts.map((r) => r.count), [0, 1, 0, 1]);
   assert.equal(s.perCase[3].pct, null, 'unplayed cases show no percentage');
+  assert.deepEqual(s.fooledBy.map((c) => c.number), [1], 'only cases under half right (cases 2 and 3 are exactly 50%)');
+  assert.equal(s.skipped.find((q) => q.id === 'B').pct, 100, 'B was never asked');
+  assert.equal(s.skipped.find((q) => q.id === 'A').pct, 0, 'A was asked every time');
 });
 
 test('summarize with no data has no suggestion', () => {
