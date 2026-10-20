@@ -1,7 +1,8 @@
 /* AI Detective: a white case board where two teams meet.
    Layout idea: white paper, ink outlines and hard offset shadows, like
    evidence cards pinned to a board. Neon blue is always the player;
-   deep purple is always Fib. Pink only decorates, never carries text.
+   deep purple is always Fib. Pink only decorates (Fib's hat band, brows and
+   mouth), never carries text.
    Students can switch theme, text size, motion and contrast in Options;
    options.js sets data-color, data-text-size, data-motion and data-contrast
    on <html>, and the blocks after :root re-map the tokens. Components only
@@ -23,6 +24,8 @@
   --on-you: #1a1033;       /* text on neon blue fills */
   --on-fib: #ffffff;       /* text on Fib's purple fills, and Fib's face */
   --fib-ink: #3d1a78;      /* Fib's color as text on the board */
+  --fib-face: #ff7ac8;     /* Fib's brows and mouth */
+  --fib-line: #1a1033;     /* Fib's eye outlines, lashes and pupils, in every theme */
   --you-glow: rgba(0, 200, 255, 0.55);
   --fib-glow: rgba(157, 0, 255, 0.45);
   --scrim: rgba(26, 16, 51, 0.55);
@@ -46,6 +49,7 @@ html[data-color="pink-blue"] {
   --fib: #a3166f;
   --fib-neon: #d6198f;
   --fib-ink: #a3166f;
+  --fib-face: #ffd1ec;
   --pink: #7b2cff;
   --on-you: #2a0f22;
   --fib-glow: rgba(214, 25, 143, 0.45);
@@ -63,6 +67,7 @@ html[data-color="night-shift"] {
   --fib: #7a3cf0;
   --fib-neon: #8f2cff;
   --fib-ink: #c9a7ff;
+  --fib-face: #ffc2e6;
   --on-you: #0b0820;
   --scrim: rgba(0, 0, 0, 0.65);
 }
@@ -77,6 +82,7 @@ html[data-color="calm"] {
   --fib: #4a3a75;
   --fib-neon: #6a4fb5;
   --fib-ink: #4a3a75;
+  --fib-face: #f4bfdb;
   --pink: #e9a6c8;
   --on-you: #22203a;
   --you-glow: transparent;
@@ -96,6 +102,8 @@ html[data-contrast="high"] {
   --fib: #3d0066;
   --fib-neon: #3d0066;
   --fib-ink: #3d0066;
+  --fib-face: #ffe14d;
+  --fib-line: #000000;
   --pink: #000000;
   --on-you: #ffffff;
   --on-fib: #ffffff;
@@ -296,11 +304,13 @@ input:not([type]):focus-visible { outline: none; box-shadow: 0 0 0 4px var(--you
 .fib-head { fill: var(--fib); }
 .fib-hat { fill: var(--ink); }
 .fib-band { fill: var(--pink); }
-.fib-mask { fill: var(--you); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
-.fib-eye { fill: var(--on-fib); stroke: var(--ink); stroke-width: 1.5; }
-.fib-pupil { fill: var(--fib); }
-.fib-brow path, .fib-mouth { fill: none; stroke: var(--on-fib); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
-.fib-mouth.filled { fill: var(--on-fib); }
+.fib-eye { fill: #ffffff; stroke: var(--fib-line); stroke-width: 1.6; }
+.fib-pupil { fill: var(--fib-line); }
+.fib-glint { fill: #ffffff; }
+.fib-lid { fill: var(--fib); stroke: var(--fib-line); stroke-width: 1.6; stroke-linejoin: round; }
+.fib-lash { fill: none; stroke: var(--fib-line); stroke-width: 2.6; stroke-linecap: round; }
+.fib-brow path, .fib-mouth { fill: none; stroke: var(--fib-face); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.fib-mouth.filled { fill: var(--fib-face); }
 .fib-avatar.big .fib-ring { animation: spin 40s linear infinite; transform-origin: 60px 78px; }
 .fib-avatar[data-fib="gleeful"] svg { animation: wobble 0.6s ease 1; }
 .fib-avatar[data-fib="annoyed"] svg { animation: huff 0.4s ease 1; }

@@ -56,6 +56,15 @@ for (const [name, t] of variants) {
   });
 }
 
+for (const [name, t] of variants) {
+  test(`${name}: Fib's brows and mouth stand out from his face`, () => {
+    // Graphics need 3:1 against what's behind them.
+    const ratio = contrast(t['fib-face'], t.fib);
+    assert.ok(ratio >= 3, `fib-face on fib is ${ratio.toFixed(2)}:1`);
+    assert.ok(contrast('#ffffff', t['fib-line']) >= 3, 'eye outlines stand out from the whites of his eyes');
+  });
+}
+
 test('high contrast reaches 7:1 for text on the board and on both team colors', () => {
   const t = variants[variants.length - 1][1];
   for (const [fg, bg] of [['ink', 'paper'], ['on-you', 'you'], ['on-fib', 'fib']]) {
