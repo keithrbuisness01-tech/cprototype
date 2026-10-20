@@ -26,7 +26,8 @@ function loadPlaywright() {
   throw new Error('Playwright not found. Install it with: npm i -g playwright');
 }
 
-const EVENT_KEYS = { start: ['type'], case: ['caseIndex', 'correct', 'picks', 'type'], finish: ['score', 'type'] };
+const Game = require('../js/game.js');
+const caseFile = (id) => require('../cases/' + id + '.json');
 
 async function main() {
   const { chromium } = loadPlaywright();
@@ -36,7 +37,8 @@ async function main() {
   try {
     const { cookie } = await app.signIn('google', googleTeacher('teacher@school.org'));
     const cls = (await (await app.api('/api/teacher/classes', { cookie, method: 'POST', body: { label: 'Network check' } })).json()).class;
-    const set = require('../cases/grade6-core.json');
+    const fall = caseFile('fall-2026');
+    const grade7 = caseFile('grade7');
 
     const browser = await chromium.launch();
     const context = await browser.newContext();
@@ -45,27 +47,77 @@ async function main() {
       requests.push({ method: req.method(), url: req.url(), body: req.postData(), headers: req.headers() });
     });
     page.on('pageerror', (e) => problems.push('page error: ' + e.message));
+    const visible = (id) => page.waitForSelector('#' + id + ':not([hidden])');
 
-    // A student follows the teacher's join link and plays every case.
+    // A student follows the teacher's join link. Fall 2026 is picked by default.
     await page.goto(cls.joinUrl);
-    await page.waitForSelector('#joined:not([hidden])');
+    await visible('joined');
+    const picked = await page.getAttribute('.set-btn[aria-pressed="true"]', 'data-set');
+    if (picked !== 'fall-2026') problems.push('default case file was ' + picked);
     await page.click('#start-btn');
     await page.click('#howto-go');
-    for (let i = 0; i < set.cases.length; i++) {
-      for (const id of ['A', 'C', 'E']) await page.click('.question[data-id="' + id + '"] .question-btn');
-      await page.click('.verdict-btn[data-guess="' + (i % 3 === 0 ? 'ai' : 'person') + '"]');
-      await page.click('#next-btn');
+
+    // Warm-up: answer each question.
+    const answerQuiz = async () => {
+      await visible('screen-quiz');
+      const groups = await page.$$('.quiz-options');
+      for (const g of groups) await (await g.$('.quiz-option')).click();
+      await page.click('#quiz-go');
+    };
+    await answerQuiz();
+
+    // Six cases: open two checks and judge, or pick the first plan.
+    for (let i = 0; i < fall.cases.length; i++) {
+      await visible('screen-inv');
+      if (await page.isVisible('#inv-checks-block')) {
+        // The list redraws after each check, so look the button up each time.
+        await page.click('.check-btn:not([disabled]) >> nth=0');
+        await page.click('.check-btn:not([disabled]) >> nth=0');
+        await page.click('.verdict-btn[data-verdict="' + (i % 2 ? 'trust' : 'distrust') + '"]');
+      } else {
+        await page.click('.plan-btn[data-option="0"]');
+      }
+      await visible('inv-result');
+      await page.click('#inv-next');
     }
-    await page.waitForSelector('#screen-end:not([hidden])');
+    await answerQuiz(); // wrap-up
+    await visible('screen-finish');
+
+    // Choose another case file: Grade 7, Person or AI.
+    await page.click('#screen-finish [data-choose]');
+    await visible('screen-home');
+    await page.click('.set-btn[data-set="grade7"]');
+    await page.click('#start-btn');
+    await page.click('#howto-go');
+    const playDetective = async () => {
+      for (let i = 0; i < grade7.cases.length; i++) {
+        await visible('screen-case');
+        const tag = await page.textContent('#case-tag');
+        if (tag.trim() !== 'Grade 7: case ' + (i + 1) + ' of 10') problems.push('progress line: ' + tag);
+        for (const id of ['A', 'C', 'E']) await page.click('.question[data-id="' + id + '"] .question-btn');
+        await page.click('.verdict-btn[data-guess="' + (i % 3 === 0 ? 'ai' : 'person') + '"]');
+        await page.click('#next-btn');
+      }
+      await visible('screen-end');
+    };
+    await playDetective();
+    // Play again: same file, shuffled, straight into the cases.
+    await page.click('#screen-end [data-again]');
+    await playDetective();
+
     // Try the options panel too: it must not touch the network.
     await page.click('#options-tab');
     await page.click('label:has(input[value="night-shift"])');
     await page.click('label[for="opt-highContrast"]');
+    await page.click('label[for="opt-taunts"]');
     await page.waitForTimeout(500);
     const storage = await page.evaluate(() => Object.keys(localStorage));
     await browser.close();
 
     const origin = new URL(app.base).origin;
+    const sets = { 'fall-2026': fall, grade7 };
+    const totals = { 'fall-2026': Game.emptyTotals(fall), grade7: Game.emptyTotals(grade7) };
+    const posts = [];
     for (const r of requests) {
       const u = new URL(r.url);
       if (u.origin !== origin) problems.push('third-party request: ' + r.url);
@@ -81,21 +133,38 @@ async function main() {
         continue;
       }
       const body = JSON.parse(r.body);
+      posts.push(body);
       if (Object.keys(body).sort().join() !== 'caseSetId,classCode,event') problems.push('extra fields sent: ' + r.body);
       if (body.classCode !== cls.code) problems.push('wrong class code sent: ' + r.body);
-      const allowed = EVENT_KEYS[body.event && body.event.type];
-      if (!allowed || Object.keys(body.event).sort().join() !== allowed.join()) problems.push('unexpected answer fields: ' + r.body);
+      const set = sets[body.caseSetId];
+      // The same strict check the server runs: exact keys, no right/wrong, no ids.
+      if (!set || !Game.applyEvent(totals[body.caseSetId], body.event, set)) problems.push('unexpected answer fields: ' + r.body);
     }
     const allowedStorage = ['ai-detective:class', 'ai-detective:options'];
     for (const key of storage) if (!allowedStorage.includes(key)) problems.push('unexpected browser storage: ' + key);
 
-    const posts = requests.filter((r) => r.method === 'POST');
+    const count = (id, type) => posts.filter((p) => p.caseSetId === id && p.event.type === type).length;
+    const expect = (label, got, want) => { if (got !== want) problems.push(label + ': expected ' + want + ', saw ' + got); };
+    expect('Fall 2026 starts', count('fall-2026', 'start'), 1);
+    expect('Fall 2026 cases', count('fall-2026', 'case'), fall.cases.length);
+    expect('Fall 2026 finishes', count('fall-2026', 'finish'), 1);
+    expect('Grade 7 starts', count('grade7', 'start'), 2);
+    expect('Grade 7 cases', count('grade7', 'case'), 20);
+    expect('Grade 7 finishes', count('grade7', 'finish'), 2);
+    const finish = posts.find((p) => p.caseSetId === 'fall-2026' && p.event.type === 'finish');
+    if (!finish || !('pre' in finish.event)) problems.push('Fall 2026 finish is missing the warm-up and wrap-up scores');
+    const replay = posts.filter((p) => p.caseSetId === 'grade7' && p.event.type === 'case').slice(10).map((p) => p.event.caseIndex);
+    if (replay.join() === '0,1,2,3,4,5,6,7,8,9') problems.push('Play again did not shuffle');
+    if (replay.slice().sort((a, b) => a - b).join() !== '0,1,2,3,4,5,6,7,8,9') problems.push('Play again did not play all ten cases');
+
     console.log('Requests made by the student device: ' + requests.length);
-    console.log('  answers sent: ' + posts.length + ' (1 start, ' + set.cases.length + ' cases, 1 finish expected)');
-    console.log('  example answer: ' + (posts[1] ? posts[1].body : 'none'));
+    console.log('  answers sent: ' + posts.length + ' (Fall 2026: 1 start, 6 cases, 1 finish; Grade 7 twice: 2 starts, 20 cases, 2 finishes)');
+    for (const ex of [posts.find((p) => p.event.type === 'case' && p.event.checks), posts.find((p) => p.event.choice !== undefined), finish, posts.find((p) => p.event.picks)]) {
+      if (ex) console.log('  example: ' + JSON.stringify(ex));
+    }
+    console.log('  Play again order: ' + replay.join(' '));
     console.log('  third-party requests: ' + requests.filter((r) => new URL(r.url).origin !== origin).length);
     console.log('  browser storage keys: ' + storage.join(', '));
-    if (posts.length !== set.cases.length + 2) problems.push('expected ' + (set.cases.length + 2) + ' answers, saw ' + posts.length);
   } finally {
     await app.close();
   }

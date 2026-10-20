@@ -1,9 +1,45 @@
 {
-  "default": "grade6-core",
+  "default": "fall-2026",
   "sets": [
     {
+      "id": "fall-2026",
+      "label": "Fall 2026",
+      "rules": "investigate",
+      "grade": null,
+      "file": "fall-2026.json"
+    },
+    {
+      "id": "warmup",
+      "label": "Warm-up",
+      "rules": "detective",
+      "grade": null,
+      "file": "warmup.json"
+    },
+    {
+      "id": "grade6",
+      "label": "Grade 6",
+      "rules": "detective",
+      "grade": 6,
+      "file": "grade6.json"
+    },
+    {
+      "id": "grade7",
+      "label": "Grade 7",
+      "rules": "detective",
+      "grade": 7,
+      "file": "grade7.json"
+    },
+    {
+      "id": "grade8",
+      "label": "Grade 8",
+      "rules": "detective",
+      "grade": 8,
+      "file": "grade8.json"
+    },
+    {
       "id": "grade6-core",
-      "title": "Grade 6 core cases",
+      "label": "Classic ten",
+      "rules": "detective",
       "grade": 6,
       "file": "grade6-core.json"
     }

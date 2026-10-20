@@ -23,6 +23,14 @@
     <div class="sign-in-buttons" id="buttons">
       <p class="muted" id="no-providers" hidden>Sign-in isn't set up on this server yet.</p>
     </div>
+    <form class="code-sign-in" id="code-form" hidden>
+      <label for="teacher-code">Or enter the teacher code</label>
+      <div class="code-row">
+        <input id="teacher-code" type="password" autocomplete="current-password" spellcheck="false" maxlength="200">
+        <button class="btn primary" type="submit">Sign in</button>
+      </div>
+      <p class="join-error" id="code-error" role="alert" hidden></p>
+    </form>
     <p class="fine-print">Students don't sign in. They join the game with their class code.</p>
     <p><a class="text-link" href="/">Back to the game</a></p>
   </main>

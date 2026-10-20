@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Detective</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#DCEBFF; --surface:#FFFFFF; --ink:#2A1650; --muted:#5B4E7A;
+  --accent:#FFC93C; --fib:#7B4FD6; --good:#14896E; --good-bg:#D6F5EC;
+  --bad:#D43A32; --bad-bg:#FFE1DF; --line:#B9C9EE; --hard:#2A1650;
+  --fs:1rem;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#170E2E; --surface:#261A4A; --ink:#F3EEFF; --muted:#B8ADD9;
+    --accent:#FFC93C; --fib:#9B74F0; --good:#4FD8B0; --good-bg:#123B33;
+    --bad:#FF7A72; --bad-bg:#45191C; --line:#46377A; --hard:#05020D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#170E2E; --surface:#261A4A; --ink:#F3EEFF; --muted:#B8ADD9;
+  --accent:#FFC93C; --fib:#9B74F0; --good:#4FD8B0; --good-bg:#123B33;
+  --bad:#FF7A72; --bad-bg:#45191C; --line:#46377A; --hard:#05020D;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:var(--fs);line-height:1.5;min-height:100vh}
+body.large{--fs:1.18rem}
+h1,h2,h3,.display{font-family:"Bungee","Arial Black",Impact,sans-serif;font-weight:400;line-height:1.1;margin:0}
+p{margin:0 0 .75em}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+img,svg{max-width:100%}
+.wrap{max-width:1040px;margin:0 auto;padding:16px 16px 48px}
+
+/* chunky game-show surfaces */
+.panel{background:var(--surface);border:3px solid var(--ink);border-radius:18px;box-shadow:0 5px 0 var(--hard);padding:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:3px solid var(--ink);border-radius:999px;background:var(--accent);color:#2A1650;font-weight:800;padding:12px 22px;box-shadow:0 4px 0 var(--hard);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--hard)}
+.btn.ghost{background:var(--surface);color:var(--ink)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.motion-off *{transition:none!important;animation:none!important}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.brand{font-family:"Bungee","Arial Black",sans-serif;font-size:1.1rem}
+.tab-btn{border:3px solid var(--ink);background:var(--surface);border-radius:12px;padding:8px 14px;font-weight:800;box-shadow:0 3px 0 var(--hard)}
+
+/* versus scoreboard — the signature element */
+.versus{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;margin-bottom:18px;border:3px solid var(--ink);border-radius:18px;overflow:hidden;box-shadow:0 5px 0 var(--hard)}
+.side{padding:10px 16px;display:flex;align-items:center;gap:12px}
+.side.you{background:var(--accent);color:#2A1650}
+.side.fib{background:var(--fib);color:#fff;justify-content:flex-end;text-align:right}
+.side .pts{font-family:"Bungee","Arial Black",sans-serif;font-size:2rem;line-height:1}
+.side .who{font-weight:800;font-size:.95rem}
+.vs{background:var(--ink);color:var(--bg);font-family:"Bungee","Arial Black",sans-serif;display:grid;place-items:center;padding:0 14px;font-size:1.1rem}
+.progress{font-weight:800;color:var(--muted);margin:-6px 0 14px;font-size:.95rem}
+
+/* stage */
+.stage{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px}
+@media (max-width:800px){.stage{grid-template-columns:1fr}}
+.evidence h2{font-size:1.3rem;margin-bottom:12px}
+.fibbox{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}
+.fibbox svg{flex:0 0 84px;width:84px;height:84px}
+.bubble{position:relative;background:var(--surface);border:3px solid var(--ink);border-radius:16px;padding:10px 14px;font-weight:700}
+.bubble::before{content:"";position:absolute;left:-12px;top:22px;border:9px solid transparent;border-right-color:var(--ink);border-left:0}
+.section-q{font-weight:800;margin:4px 0 8px}
+.clues{display:grid;gap:10px;margin-bottom:16px}
+.clue{text-align:left;border:3px solid var(--ink);border-radius:14px;background:var(--surface);padding:10px 14px;font-weight:700;box-shadow:0 3px 0 var(--hard)}
+.clue[disabled]{cursor:default}
+.clue.used{background:var(--bg)}
+.clue .res{display:block;font-weight:500;margin-top:6px;color:var(--ink)}
+.tag{display:inline-block;font-size:.8rem;font-weight:800;border-radius:999px;padding:2px 10px;margin-top:6px}
+.tag.strong{background:var(--good-bg);color:var(--good);border:2px solid var(--good)}
+.tag.weak{background:var(--bad-bg);color:var(--bad);border:2px solid var(--bad)}
+.verdicts{display:flex;gap:10px;flex-wrap:wrap}
+.verdicts .btn{flex:1 1 160px}
+.btn.trust{background:var(--good);color:#fff}
+.btn.distrust{background:var(--bad);color:#fff}
+.result{margin-top:16px;border-radius:14px;padding:14px 16px;border:3px solid var(--ink)}
+.result.win{background:var(--good-bg)}
+.result.lose{background:var(--bad-bg)}
+.result h3{font-size:1.15rem;margin-bottom:8px}
+.skill{font-size:.9rem;color:var(--muted);font-weight:800;margin-top:6px}
+
+/* evidence mockups */
+.post{border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.post-head{display:flex;align-items:center;gap:10px;padding:10px 12px;font-weight:800}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--fib);display:grid;place-items:center;color:#fff;font-size:.8rem}
+.post-body{padding:0 12px 12px}
+.post-meta{color:var(--muted);font-size:.9rem;padding:8px 12px;border-top:2px solid var(--line)}
+.webpage{border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.urlbar{background:var(--bg);padding:8px 12px;font-size:.88rem;color:var(--muted);border-bottom:2px solid var(--line);overflow-x:auto;white-space:nowrap}
+.webpage .content{padding:14px}
+.review{border-bottom:2px dashed var(--line);padding:8px 0}
+.review:last-child{border-bottom:0}
+.stars{color:#E8A400;letter-spacing:2px}
+.chat{display:grid;gap:10px}
+.msg{max-width:85%;padding:10px 14px;border-radius:16px;border:2px solid var(--line)}
+.msg.me{justify-self:end;background:var(--accent);color:#2A1650;border-color:var(--ink)}
+.msg.bot{background:var(--bg)}
+.choice{width:100%;text-align:left;margin-bottom:10px;border:3px solid var(--ink);border-radius:14px;background:var(--surface);padding:12px 14px;font-weight:700;box-shadow:0 3px 0 var(--hard)}
+.choice.right{background:var(--good-bg)}
+.choice.wrong{background:var(--bad-bg)}
+
+/* title */
+.hero{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;padding:28px}
+@media (max-width:700px){.hero{grid-template-columns:1fr;text-align:center}.hero svg{margin:0 auto}}
+.hero h1{font-size:clamp(2.4rem,7vw,4.2rem);margin-bottom:10px}
+.hero .bubble{margin:14px 0 18px;display:inline-block}
+.hero .bubble::before{display:none}
+.pack{color:var(--muted);font-weight:800;margin-top:14px}
+
+/* quiz */
+.q{margin-bottom:18px}
+.q legend{font-weight:800;margin-bottom:8px}
+.q fieldset{border:0;padding:0;margin:0}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border:2px solid var(--line);border-radius:12px;margin-bottom:6px;cursor:pointer;background:var(--surface)}
+.opt input{margin-top:5px;accent-color:var(--fib)}
+
+/* finish */
+.scorecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:18px 0}
+.scorecard{border:3px solid var(--ink);border-radius:14px;padding:14px;text-align:center;background:var(--bg)}
+.scorecard .big{font-family:"Bungee","Arial Black",sans-serif;font-size:2rem}
+.talk li{margin-bottom:8px}
+
+/* overlay panel */
+.overlay{position:fixed;inset:0;background:rgba(10,4,25,.55);display:none;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 20px) 14px 20px;z-index:20;overflow-y:auto}
+.overlay.open{display:flex}
+.sheet{width:100%;max-width:720px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}
+.sheet h2{font-size:1.4rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:2px dashed var(--line)}
+.seg{display:inline-flex;border:3px solid var(--ink);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 14px;font-weight:800}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#2A1650}
+.ttabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.ttabs button{border:3px solid var(--ink);border-radius:12px;background:var(--surface);padding:6px 12px;font-weight:800}
+.ttabs button[aria-selected="true"]{background:var(--fib);color:#fff}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+td,th{text-align:left;padding:8px;border-bottom:2px solid var(--line);vertical-align:top}
+input[type=password],input[type=text],select{font:inherit;padding:10px 12px;border:3px solid var(--ink);border-radius:12px;background:var(--surface);color:var(--ink)}
+.note{color:var(--muted);font-size:.92rem}
+.err{color:var(--bad);font-weight:800}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@keyframes wobble{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+.wobble{animation:wobble .5s ease-in-out 2}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">AI Detective</div>
+    <button class="tab-btn" id="openOptions" aria-haspopup="dialog">Options</button>
+  </div>
+  <main id="app" aria-live="polite"></main>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="panel sheet" id="sheet"></div>
+</div>
+
+<script>
+/* ---------- storage (per-device, no student data) ---------- */
+function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function save(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+const settings = Object.assign({size:'normal', taunts:true, motion:true, grade:'7'}, load('aid:settings', {}));
+function applySettings(){
+  document.body.classList.toggle('large', settings.size === 'large');
+  document.body.classList.toggle('motion-off', !settings.motion);
+  save('aid:settings', settings);
+}
+
+/* ---------- Fib, the rival ---------- */
+function fib(mood){
+  const mouth = mood === 'laugh'
+    ? '<path d="M34 64 Q50 80 66 64 Z" fill="#2A1650"/>'
+    : mood === 'shocked'
+    ? '<ellipse cx="50" cy="66" rx="7" ry="9" fill="#2A1650"/>'
+    : '<path d="M34 64 Q52 74 68 60" stroke="#2A1650" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const brow = mood === 'shocked'
+    ? '<path d="M30 36 L44 32 M56 32 L70 36" stroke="#2A1650" stroke-width="4" stroke-linecap="round"/>'
+    : '<path d="M30 40 L44 38 M56 32 L70 38" stroke="#2A1650" stroke-width="4" stroke-linecap="round"/>';
+  return `<svg viewBox="0 0 100 100" aria-hidden="true" class="${mood==='laugh'&&settings.motion?'wobble':''}">
+    <rect x="30" y="4" width="40" height="16" rx="3" fill="#2A1650"/>
+    <rect x="22" y="18" width="56" height="6" rx="3" fill="#2A1650"/>
+    <circle cx="50" cy="56" r="34" fill="#7B4FD6" stroke="#2A1650" stroke-width="4"/>
+    <circle cx="38" cy="50" r="7" fill="#fff"/><circle cx="62" cy="50" r="7" fill="#fff"/>
+    <circle cx="40" cy="51" r="3.5" fill="#2A1650"/><circle cx="64" cy="51" r="3.5" fill="#2A1650"/>
+    ${brow}${mouth}
+    <path d="M22 82 Q50 96 78 82 L80 92 Q50 104 20 92 Z" fill="#FFC93C" stroke="#2A1650" stroke-width="3"/>
+  </svg>`;
+}
+
+/* ---------- evidence art ---------- */
+const sharkPhoto = `<svg viewBox="0 0 400 220" role="img" aria-label="A photo of a flooded highway with a shark fin sticking out of the water next to a half-sunk car">
+  <rect width="400" height="220" fill="#8FA3B8"/>
+  <rect y="70" width="400" height="150" fill="#5E6F7E"/>
+  <path d="M0 110 L400 100" stroke="#C9D2DA" stroke-width="4" stroke-dasharray="18 14"/>
+  <rect y="120" width="400" height="100" fill="#4F7FA0" opacity=".85"/>
+  <path d="M0 130 Q50 122 100 130 T200 130 T300 130 T400 130" stroke="#B9D6EA" stroke-width="3" fill="none"/>
+  <rect x="250" y="102" width="110" height="34" rx="8" fill="#B33A3A"/>
+  <rect x="268" y="90" width="70" height="22" rx="6" fill="#C9D9E6"/>
+  <path d="M120 150 L150 98 L172 150 Z" fill="#3D4A55"/>
+  <path d="M110 154 Q140 146 180 154" stroke="#B9D6EA" stroke-width="3" fill="none"/>
+</svg>`;
+
+const quotePoster = `<div style="background:#2A1650;color:#FFF3C4;border-radius:12px;padding:28px 22px;text-align:center;font-family:Georgia,'Times New Roman',serif">
+  <div style="font-size:1.35rem;line-height:1.4">“Reading is for people with no imagination.”</div>
+  <div style="margin-top:14px;font-style:italic">— Albert Einstein</div>
+  <div style="margin-top:14px;font-family:Nunito,sans-serif;font-size:.85rem;opacity:.75">Shared 48,000 times</div>
+</div>`;
+
+/* ---------- Fall 2026 case pack ---------- */
+const PACK = 'Fall 2026';
+const CASES = [
+  {
+    kind:'investigate', title:'Case 1: The storm shark',
+    fib:'This was posted last night. A shark on the highway! Share it before it gets taken down.',
+    neutral:'A photo is going around after a storm. Investigate before you decide.',
+    evidence:`<div class="post"><div class="post-head"><div class="avatar">SN</div>StormNewsLive</div>${sharkPhoto}<div class="post-body">Shark swimming down the highway after last night’s storm!! 🦈🌊</div><div class="post-meta">2.1M likes</div></div>`,
+    clues:[
+      {label:'Search where else this photo has appeared', result:'The same photo was posted during three different storms, years apart.', strong:true},
+      {label:'Look at who posted it', result:'The account was made two weeks ago and only posts viral pictures.', strong:true},
+      {label:'Count the likes', result:'2.1 million likes. Lots of people saw it, but likes don’t prove anything is real.', strong:false},
+      {label:'Zoom in for weird details', result:'The water looks a little odd, but it’s hard to tell. Eyes alone can’t settle this.', strong:false}
+    ],
+    answer:'no',
+    explain:'A photo that shows up in many different storms isn’t from last night. Checking where a picture came from beats staring at it.',
+    skill:'Evaluating sources across media'
+  },
+  {
+    kind:'investigate', title:'Case 2: The famous quote',
+    fib:'Einstein said it, so it must be true. He’s a genius!',
+    neutral:'A quote poster is being shared. Investigate before you decide.',
+    evidence:quotePoster,
+    clues:[
+      {label:'Search a trusted quote collection', result:'No record of Einstein ever writing or saying this.', strong:true},
+      {label:'Find the earliest place it appeared', result:'The quote first shows up on a meme page in recent years, decades after Einstein died.', strong:true},
+      {label:'Ask: does it sound like him?', result:'Maybe? But “sounds right” is a feeling, not evidence.', strong:false},
+      {label:'Check if the poster looks official', result:'It looks fancy. Anyone can make a fancy poster.', strong:false}
+    ],
+    answer:'no',
+    explain:'Putting a famous name on a sentence doesn’t make it real. Ask “where is the original?” and trace the claim back.',
+    skill:'Tracing claims to their evidence'
+  },
+  {
+    kind:'investigate', title:'Case 3: Library hours',
+    fib:'Too good to be true! Nobody keeps a library open that late. Total fake.',
+    neutral:'An announcement about your local library. Investigate before you decide.',
+    evidence:`<div class="webpage"><div class="urlbar">cityhillspubliclibrary.org/news/longer-hours</div><div class="content"><h3 style="font-size:1.1rem;margin-bottom:8px">Longer weekday hours start in November</h3><p>Starting November 2, all branches will stay open until 9 p.m. Monday through Thursday.</p><p class="note">Posted October 12, 2026 by R. Alvarez, Branch Services</p></div></div>`,
+    clues:[
+      {label:'Visit the library’s official site directly', result:'The same announcement is on the library’s real homepage.', strong:true},
+      {label:'Check the date and the author', result:'Dated this month, with a named staff member you can contact.', strong:true},
+      {label:'Read the comments', result:'People are arguing in the comments. That tells you about the comments, not the facts.', strong:false},
+      {label:'Ask: does it feel too good to be true?', result:'Good news can be real too. Feelings aren’t a check.', strong:false}
+    ],
+    answer:'yes',
+    explain:'Not everything surprising is fake. An official source, a recent date and a named author are good signs, and Fib was wrong this time.',
+    skill:'Assessing credibility of a source'
+  },
+  {
+    kind:'investigate', title:'Case 4: The perfect reviews',
+    fib:'Fifty five-star reviews! This homework app must be the best ever. Download it now.',
+    neutral:'A new app has a lot of glowing reviews. Investigate before you decide.',
+    evidence:`<div class="webpage"><div class="urlbar">appstore page: HomeworkHero</div><div class="content">
+      <div class="review"><span class="stars">★★★★★</span><br>This app is AMAZING, it changed my grades forever!!!</div>
+      <div class="review"><span class="stars">★★★★★</span><br>This app is AMAZING, it changed my grades completely!!</div>
+      <div class="review"><span class="stars">★★★★★</span><br>AMAZING app, it changed my grades forever!!!</div>
+      <p class="note" style="margin-top:8px">4.9 average from 50 reviews</p></div></div>`,
+    clues:[
+      {label:'Compare the reviews to each other', result:'Most use nearly the same words, and all were posted on the same day.', strong:true},
+      {label:'Check the reviewers’ profiles', result:'Almost every reviewer has written only this one review.', strong:true},
+      {label:'Look at the star average', result:'4.9 stars sounds great, but fake reviews raise the average too.', strong:false},
+      {label:'Count the exclamation marks', result:'Lots of them! But real people get excited too. Style alone isn’t proof.', strong:false}
+    ],
+    answer:'no',
+    explain:'Copy-paste reviews from brand-new accounts on one day are a pattern, not a crowd. Look for patterns across many pieces, not one.',
+    skill:'Analyzing patterns in evidence'
+  },
+  {
+    kind:'investigate', title:'Case 5: The confident chatbot',
+    fib:'The chatbot said it really confidently. Computers don’t make mistakes!',
+    neutral:'A student asked a chatbot a question for a project. Investigate before you decide.',
+    evidence:`<div class="chat"><div class="msg me">Can you see the Great Wall of China from the Moon?</div><div class="msg bot">Yes! The Great Wall of China is the only human-made structure clearly visible from the Moon with the naked eye.</div></div>`,
+    clues:[
+      {label:'Check a space agency or encyclopedia', result:'Astronauts report the Wall can’t be seen from the Moon with the naked eye. It’s far too narrow.', strong:true},
+      {label:'Ask the chatbot for its sources', result:'It gives no source you can actually open and check.', strong:true},
+      {label:'Ask the chatbot again', result:'It says the same thing. Repeating an answer doesn’t make it true.', strong:false},
+      {label:'Notice how sure it sounds', result:'Very sure! AI can sound confident and still be wrong.', strong:false}
+    ],
+    answer:'no',
+    explain:'AI tools can repeat popular myths with total confidence. Use them as a starting point, then confirm with a source you can check.',
+    skill:'Verifying information from AI tools'
+  },
+  {
+    kind:'choose', title:'Case 6: Using AI the right way',
+    fib:'Easy. Have the AI write the whole thing. Nobody will ever know!',
+    neutral:'Think about the best plan.',
+    evidence:`<div class="post"><div class="post-body" style="padding-top:12px"><p><strong>The situation:</strong> Your English class has a short essay due: “Write about a time you changed your mind.” Your teacher allows AI for brainstorming only.</p><p style="margin:0">Which plan is the responsible one?</p></div></div>`,
+    options:[
+      {text:'Have AI write the essay, then change a few words so it sounds like you.', right:false},
+      {text:'Ask AI for a few questions to jog your memory, then pick your own story and write it yourself.', right:true},
+      {text:'Find an essay online about changing your mind and use its main ideas.', right:false},
+      {text:'Skip AI completely, because using it at all is cheating.', right:false}
+    ],
+    explain:'Responsible use means following your teacher’s rules and keeping the thinking yours. Brainstorm help is allowed here. Writing it for you is not, and avoiding a tool your teacher allowed isn’t required either.',
+    skill:'Responsible use of AI in writing'
+  }
+];
+
+/* ---------- warm-up / wrap-up check (same questions, so teachers can compare) ---------- */
+const CHECK = [
+  {q:'A post has 2 million likes. What does that tell you?', o:['It’s probably true','Lots of people saw it, but that doesn’t prove it’s true','An expert must have checked it'], a:1},
+  {q:'A chatbot gives you an answer very confidently. What should you do?', o:['Trust it, since it sounds sure','Check it with another source you can trust','Ask it again, and if the answer stays the same it’s true'], a:1},
+  {q:'You see a surprising photo online. What’s the best first step?', o:['Zoom in and look for weird details','Search where else the photo has appeared','Share it and ask your friends'], a:1},
+  {q:'When is using AI for schoolwork responsible?', o:['When nobody can tell','When you follow your teacher’s rules and still do your own thinking','When the assignment is short'], a:1}
+];
+
+/* ---------- game state ---------- */
+const S = {screen:'title', pre:null, post:null, i:0, opened:[], done:false, you:0, fib:0, last:null};
+const app = document.getElementById('app');
+
+function scoreboard(){
+  return `<div class="versus" aria-label="Score: you ${S.you}, Fib ${S.fib}">
+    <div class="side you"><div><div class="who">You</div><div class="pts">${S.you}</div></div></div>
+    <div class="vs" aria-hidden="true">VS</div>
+    <div class="side fib"><div><div class="who">Fib</div><div class="pts">${S.fib}</div></div></div>
+  </div>`;
+}
+
+function render(){
+  if(S.screen === 'title') return renderTitle();
+  if(S.screen === 'pre') return renderCheck('pre');
+  if(S.screen === 'case') return renderCase();
+  if(S.screen === 'post') return renderCheck('post');
+  if(S.screen === 'finish') return renderFinish();
+}
+
+function renderTitle(){
+  app.innerHTML = `<section class="panel hero">
+    ${fib('smug').replace('<svg','<svg width="200" height="200"')}
+    <div>
+      <h1>AI Detective</h1>
+      <div class="bubble">${settings.taunts ? 'I’m Fib. I bet I can fool you at least three times today.' : 'Six cases. Check the evidence, then decide what to trust.'}</div>
+      <p>Investigate posts, quotes, reviews and chatbot answers. You score by checking well, not by guessing.</p>
+      <button class="btn" id="go">Start the warm-up</button>
+      <div class="pack">Case pack: ${PACK}. New cases every semester.</div>
+    </div>
+  </section>`;
+  document.getElementById('go').onclick = () => { S.screen = 'pre'; render(); window.scrollTo(0,0); };
+}
+
+function renderCheck(which){
+  const intro = which === 'pre'
+    ? ['Warm-up', 'Four quick questions before the cases. Just answer what you think right now.', 'Start the cases']
+    : ['Wrap-up', 'The same four questions again. See what changed.', 'See my results'];
+  app.innerHTML = `<section class="panel">
+    <h2 style="font-size:1.6rem;margin-bottom:6px">${intro[0]}</h2>
+    <p>${intro[1]}</p>
+    <form id="chk">${CHECK.map((c,qi)=>`<div class="q"><fieldset><legend>${qi+1}. ${c.q}</legend>
+      ${c.o.map((o,oi)=>`<label class="opt"><input type="radio" name="q${qi}" value="${oi}"> <span>${o}</span></label>`).join('')}
+    </fieldset></div>`).join('')}
+    <p class="err" id="chkErr" hidden>Answer all four questions to continue.</p>
+    <button class="btn" type="submit">${intro[2]}</button></form>
+  </section>`;
+  document.getElementById('chk').onsubmit = e => {
+    e.preventDefault();
+    const f = new FormData(e.target); let score = 0;
+    for(let qi=0; qi<CHECK.length; qi++){
+      const v = f.get('q'+qi);
+      if(v === null){ document.getElementById('chkErr').hidden = false; return; }
+      if(+v === CHECK[qi].a) score++;
+    }
+    if(which === 'pre'){ S.pre = score; S.screen = 'case'; }
+    else { S.post = score; S.screen = 'finish'; recordResult(); }
+    render(); window.scrollTo(0,0);
+  };
+}
+
+function renderCase(){
+  const c = CASES[S.i];
+  const mood = S.last ? (S.last.win ? 'shocked' : 'laugh') : 'smug';
+  const line = S.done && S.last ? S.last.fibSays : (settings.taunts ? c.fib : c.neutral);
+  let right = '';
+
+  if(c.kind === 'investigate'){
+    const left = 2 - S.opened.length;
+    right = `<div class="section-q">Run your checks. You have time for ${left > 0 ? left + (left===1?' more check':' checks') : 'no more checks'}.</div>
+      <div class="clues">${c.clues.map((cl,ci)=>{
+        const used = S.opened.includes(ci);
+        const show = used || S.done;
+        return `<button class="clue ${used?'used':''}" data-clue="${ci}" ${used||left<=0||S.done?'disabled':''}>
+          ${cl.label}
+          ${show ? `<span class="res">${used ? cl.result : ''}</span><span class="tag ${cl.strong?'strong':'weak'}">${cl.strong?'Strong check':'Weak check'}</span>` : ''}
+        </button>`;}).join('')}</div>
+      <div class="section-q">Your verdict</div>
+      <div class="verdicts">
+        <button class="btn trust" data-v="yes" ${S.done?'disabled':''}>Trust it</button>
+        <button class="btn distrust" data-v="no" ${S.done?'disabled':''}>Don’t trust it</button>
+      </div>`;
+  } else {
+    right = `<div class="section-q">Pick a plan</div>${c.options.map((o,oi)=>{
+      const cls = S.done ? (o.right ? 'right' : (S.last.pick===oi ? 'wrong' : '')) : '';
+      return `<button class="choice ${cls}" data-opt="${oi}" ${S.done?'disabled':''}>${o.text}</button>`;}).join('')}`;
+  }
+
+  const result = S.done ? `<div class="result ${S.last.win?'win':'lose'}" tabindex="-1" id="res">
+      <h3>${S.last.head}</h3><p>${S.last.detail}</p><p style="margin:0">${c.explain}</p>
+      <div class="skill">Skill: ${c.skill}</div>
+      <div style="margin-top:12px"><button class="btn" id="next">${S.i < CASES.length-1 ? 'Next case' : 'Go to the wrap-up'}</button></div>
+    </div>` : '';
+
+  app.innerHTML = `${scoreboard()}
+    <div class="progress">Case ${S.i+1} of ${CASES.length}</div>
+    <div class="stage">
+      <section class="panel evidence"><h2>${c.title}</h2>${c.evidence}</section>
+      <section class="panel">
+        <div class="fibbox">${fib(mood)}<div class="bubble">${line}</div></div>
+        ${right}${result}
+      </section>
+    </div>`;
+
+  app.querySelectorAll('[data-clue]').forEach(b => b.onclick = () => { S.opened.push(+b.dataset.clue); render(); });
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => judge(b.dataset.v));
+  app.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => judgeChoice(+b.dataset.opt));
+  const nx = document.getElementById('next');
+  if(nx){ nx.onclick = nextCase; document.getElementById('res').focus({preventScroll:false}); }
+}
+
+function judge(v){
+  const c = CASES[S.i];
+  const strong = S.opened.filter(i => c.clues[i].strong).length;
+  const correct = v === c.answer;
+  if(correct && strong > 0){
+    const pts = 2 + strong; S.you += pts;
+    S.last = {win:true, head:`Solved! +${pts} points`, detail:`Right call, backed by ${strong} strong ${strong===1?'check':'checks'}.`, fibSays: settings.taunts ? 'What? You actually checked. Lucky… I mean, fine.' : 'Well investigated.'};
+  } else if(correct){
+    S.you += 1; S.fib += 1;
+    S.last = {win:false, head:'Right answer, weak case. +1 point', detail:'Your verdict was right, but none of your checks could prove it. Fib gets a point for the lucky guess.', fibSays: settings.taunts ? 'Ha! You guessed. A real detective needs proof.' : 'Right answer, but it needed stronger checks.'};
+  } else {
+    S.fib += 2;
+    S.last = {win:false, head:'Fooled! Fib scores 2', detail:'Your verdict didn’t match the evidence. Look at which checks were strong.', fibSays: settings.taunts ? 'Gotcha! One more for Fib.' : 'Not this time. Look at the strong checks.'};
+  }
+  S.done = true; render();
+}
+
+function judgeChoice(oi){
+  const c = CASES[S.i]; const ok = c.options[oi].right;
+  if(ok){ S.you += 3; S.last = {win:true, pick:oi, head:'Good plan! +3 points', detail:'You followed the rules and kept the thinking yours.', fibSays: settings.taunts ? 'Boring! But… correct.' : 'Responsible choice.'}; }
+  else { S.fib += 2; S.last = {win:false, pick:oi, head:'Not quite. Fib scores 2', detail:'That plan breaks the rules or skips your own thinking.', fibSays: settings.taunts ? 'Ooh, risky. I like it. Your teacher won’t.' : 'Look at the highlighted plan.'}; }
+  S.done = true; render();
+}
+
+function nextCase(){
+  S.opened = []; S.done = false; S.last = null;
+  if(S.i < CASES.length-1){ S.i++; S.screen = 'case'; } else { S.screen = 'post'; }
+  render(); window.scrollTo(0,0);
+}
+
+function renderFinish(){
+  const won = S.you > S.fib;
+  const diff = S.post - S.pre;
+  app.innerHTML = `${scoreboard()}
+  <section class="panel">
+    <div class="fibbox">${fib(won?'shocked':'laugh')}<div class="bubble">${won
+      ? (settings.taunts ? 'You beat me this time. Next semester I’m coming back with new tricks.' : 'You outscored Fib. Great investigating.')
+      : (settings.taunts ? 'Fib wins! Come back and try to catch me next time.' : 'Fib won this round. Try again and use stronger checks.')}</div></div>
+    <h2 style="font-size:1.6rem">${won ? 'Case closed. You win!' : 'Fib wins this round'}</h2>
+    <div class="scorecards">
+      <div class="scorecard"><div class="big">${S.pre}/4</div>Warm-up</div>
+      <div class="scorecard"><div class="big">${S.post}/4</div>Wrap-up</div>
+      <div class="scorecard"><div class="big">${diff>0?'+':''}${diff}</div>Change</div>
+    </div>
+    <h3 style="font-size:1.15rem;margin:8px 0">Talk about it with your class</h3>
+    <ol class="talk">
+      <li>Which check helped you the most today, and why was it strong?</li>
+      <li>Case 3 was real. How do you avoid becoming so suspicious that you don’t trust anything?</li>
+      <li>What is one rule you’ll use the next time an AI tool gives you an answer?</li>
+    </ol>
+    <button class="btn" id="again">Play again</button>
+  </section>`;
+  document.getElementById('again').onclick = () => { Object.assign(S,{screen:'title',pre:null,post:null,i:0,opened:[],done:false,you:0,fib:0,last:null}); render(); window.scrollTo(0,0); };
+}
+
+function recordResult(){
+  const r = load('aid:results', []);
+  r.push({pre:S.pre, post:S.post, you:S.you, fib:S.fib, pack:PACK, d:new Date().toISOString().slice(0,10)});
+  save('aid:results', r);
+}
+
+/* ---------- options sheet (students) + teacher area (code-gated) ---------- */
+const overlay = document.getElementById('overlay');
+const sheet = document.getElementById('sheet');
+let teacherOpen = false, tTab = 'guide';
+
+function openSheet(){ overlay.classList.add('open'); teacherOpen = false; renderSheet(); }
+function closeSheet(){ overlay.classList.remove('open'); teacherOpen = false; document.getElementById('openOptions').focus(); render(); }
+document.getElementById('openOptions').onclick = openSheet;
+overlay.addEventListener('click', e => { if(e.target === overlay) closeSheet(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && overlay.classList.contains('open')) closeSheet(); });
+
+function seg(name, opts){
+  return `<div class="seg" role="group">${opts.map(([v,l])=>`<button data-set="${name}" data-val="${v}" aria-pressed="${String(settings[name])===String(v)}">${l}</button>`).join('')}</div>`;
+}
+
+function renderSheet(){
+  if(teacherOpen) return renderTeacher();
+  sheet.innerHTML = `<div class="sheet-head"><h2 id="sheetTitle">Options</h2><button class="btn ghost" id="close">Close</button></div>
+    <div class="row"><span>Text size</span>${seg('size',[['normal','Normal'],['large','Large']])}</div>
+    <div class="row"><span>Fib’s trash talk</span>${seg('taunts',[[true,'On'],[false,'Off']])}</div>
+    <div class="row"><span>Animations</span>${seg('motion',[[true,'On'],[false,'Off']])}</div>
+    <div class="row" style="border-bottom:0"><span>For teachers</span><button class="btn ghost" id="toTeacher">Teacher area</button></div>`;
+  sheet.querySelector('#close').onclick = closeSheet;
+  sheet.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
+    const k = b.dataset.set, v = b.dataset.val;
+    settings[k] = (v === 'true') ? true : (v === 'false') ? false : v;
+    applySettings(); renderSheet();
+  });
+  sheet.querySelector('#toTeacher').onclick = renderGate;
+  sheet.querySelector('#close').focus();
+}
+
+function renderGate(){
+  const code = load('aid:tcode', null);
+  sheet.innerHTML = `<div class="sheet-head"><h2 id="sheetTitle">Teacher area</h2><button class="btn ghost" id="back">Back</button></div>
+    <p>${code ? 'Enter your teacher code.' : 'Create a teacher code for this computer. Students won’t be able to open this area without it.'}</p>
+    <form id="gate" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label class="sr" for="tc">Teacher code</label>
+      <input id="tc" type="password" inputmode="numeric" autocomplete="off" placeholder="${code ? 'Teacher code' : 'At least 4 characters'}">
+      <button class="btn" type="submit">${code ? 'Open' : 'Create code'}</button>
+    </form>
+    <p class="err" id="gerr" hidden></p>
+    <p class="note" style="margin-top:12px">This prototype keeps the code and results on this computer only. Real teacher sign-in comes with teacher accounts.</p>`;
+  sheet.querySelector('#back').onclick = renderSheet;
+  const tc = sheet.querySelector('#tc'); tc.focus();
+  sheet.querySelector('#gate').onsubmit = e => {
+    e.preventDefault(); const v = tc.value.trim(); const err = sheet.querySelector('#gerr');
+    if(!code){ if(v.length < 4){ err.textContent = 'Use at least 4 characters.'; err.hidden = false; return; } save('aid:tcode', v); }
+    else if(v !== code){ err.textContent = 'That code doesn’t match. Try again.'; err.hidden = false; return; }
+    teacherOpen = true; renderTeacher();
+  };
+}
+
+const STANDARDS = g => [
+  [`RI.${g}.8`, 'Evaluate the claims in a text and whether the evidence supports them.', 'Cases 1, 2, 5'],
+  [`W.${g}.8`, 'Gather information from multiple sources and judge each source’s credibility.', 'Cases 2, 3, 5'],
+  [`SL.${g}.2`, 'Analyze ideas and information presented in different media and formats.', 'Cases 1, 4'],
+  [`W.${g}.4 / W.${g}.10`, 'Produce clear writing of one’s own (connects to responsible AI use).', 'Case 6']
+];
+
+function renderTeacher(){
+  const tabs = [['guide','Lesson guide'],['standards','Standards'],['results','Results'],['share','Share'],['settings','Settings']];
+  let body = '';
+  if(tTab === 'guide'){
+    body = `<p><strong>One class period, about 45 minutes.</strong> One student per computer, or project it for whole-class play.</p>
+      <div class="tbl"><table><tr><th>Time</th><th>What happens</th></tr>
+      <tr><td>5 min</td><td>Warm-up check (4 questions). Don’t discuss answers yet.</td></tr>
+      <tr><td>20 min</td><td>Students play the six cases against Fib. They earn points for strong checks, not lucky guesses.</td></tr>
+      <tr><td>5 min</td><td>Wrap-up check (same 4 questions). Students see their change.</td></tr>
+      <tr><td>15 min</td><td>Discussion using the prompts on the final screen.</td></tr></table></div>
+      <h3 style="font-size:1.05rem;margin:16px 0 6px">Key idea for students</h3>
+      <p>The goal isn’t guessing “AI or not.” It’s asking “how would I check?” Strong checks look outside the content (where it came from, who made it, what trusted sources say). Weak checks look only at the content itself or at how popular it is.</p>
+      <h3 style="font-size:1.05rem;margin:16px 0 6px">Extension</h3>
+      <p style="margin:0">Have students bring one real post or claim they saw this week and run two strong checks on it as homework.</p>`;
+  } else if(tTab === 'standards'){
+    body = `<div class="row" style="padding-top:0"><label for="gr">Grade level</label>
+      <select id="gr">${['6','7','8'].map(g=>`<option ${settings.grade===g?'selected':''}>${g}</option>`).join('')}</select></div>
+      <div class="tbl" style="margin-top:10px"><table><tr><th>Standard</th><th>What it covers</th><th>Where</th></tr>
+      ${STANDARDS(settings.grade).map(s=>`<tr><td><strong>${s[0]}</strong></td><td>${s[1]}</td><td>${s[2]}</td></tr>`).join('')}</table></div>
+      <p class="note" style="margin-top:10px">Based on Common Core ELA. Check your state’s version before listing these in a lesson plan.</p>`;
+  } else if(tTab === 'results'){
+    const r = load('aid:results', []);
+    if(!r.length){ body = `<p>No finished games on this computer yet. Results appear here after a student completes the wrap-up.</p>`; }
+    else {
+      const avg = k => (r.reduce((a,x)=>a+x[k],0)/r.length).toFixed(1);
+      const improved = r.filter(x=>x.post>x.pre).length;
+      body = `<p class="note">Anonymous totals from this computer. No names or student data are saved.</p>
+        <div class="scorecards">
+          <div class="scorecard"><div class="big">${r.length}</div>Games finished</div>
+          <div class="scorecard"><div class="big">${avg('pre')}</div>Avg warm-up (of 4)</div>
+          <div class="scorecard"><div class="big">${avg('post')}</div>Avg wrap-up (of 4)</div>
+          <div class="scorecard"><div class="big">${Math.round(improved/r.length*100)}%</div>Improved</div>
+        </div>
+        <button class="btn ghost" id="copyRes">Copy summary</button> <span class="note" id="copied"></span>`;
+    }
+  } else if(tTab === 'share'){
+    body = `<p>Share the game with another teacher, or post the link in your class page.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" readonly value="${location.href}" style="flex:1 1 260px" aria-label="Game link"><button class="btn" id="copyLink">Copy link</button></div>
+      <p class="note" id="copied" style="margin-top:8px"></p>
+      <p style="margin-top:12px">Case pack: <strong>${PACK}</strong>. A new pack with fresh cases is planned each semester.</p>`;
+  } else {
+    body = `<div class="row" style="padding-top:0"><span>Change teacher code</span><button class="btn ghost" id="chg">Change code</button></div>
+      <div class="row"><span>Clear saved results on this computer</span><button class="btn ghost" id="clr">Clear results</button></div>
+      <p class="note" id="msg" style="margin-top:10px"></p>`;
+  }
+  sheet.innerHTML = `<div class="sheet-head"><h2 id="sheetTitle">Teacher area</h2><button class="btn ghost" id="close">Close</button></div>
+    <div class="ttabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${tTab===k}">${l}</button>`).join('')}</div>
+    <div>${body}</div>`;
+  sheet.querySelector('#close').onclick = closeSheet;
+  sheet.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tTab = b.dataset.tab; renderTeacher(); });
+  const gr = sheet.querySelector('#gr'); if(gr) gr.onchange = () => { settings.grade = gr.value; applySettings(); renderTeacher(); };
+  const copy = async (text) => { const m = sheet.querySelector('#copied'); try{ await navigator.clipboard.writeText(text); m.textContent = 'Copied.'; }catch(e){ m.textContent = 'Couldn’t copy automatically. Select the text and copy it.'; } };
+  const cl = sheet.querySelector('#copyLink'); if(cl) cl.onclick = () => copy(location.href);
+  const cr = sheet.querySelector('#copyRes'); if(cr) cr.onclick = () => {
+    const r = load('aid:results', []); const avg = k => (r.reduce((a,x)=>a+x[k],0)/r.length).toFixed(1);
+    copy(`AI Detective (${PACK}): ${r.length} games. Avg warm-up ${avg('pre')}/4, avg wrap-up ${avg('post')}/4, ${r.filter(x=>x.post>x.pre).length} of ${r.length} improved.`);
+  };
+  const chg = sheet.querySelector('#chg'); if(chg) chg.onclick = () => { try{ localStorage.removeItem('aid:tcode'); }catch(e){} teacherOpen = false; renderGate(); };
+  const clr = sheet.querySelector('#clr'); if(clr) clr.onclick = () => { save('aid:results', []); sheet.querySelector('#msg').textContent = 'Results cleared.'; };
+}
+
+applySettings();
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+{
+  "id": "grade6",
+  "title": "Grade 6 case file",
+  "label": "Grade 6",
+  "blurb": "Trickier clues",
+  "rules": "detective",
+  "grade": 6,
+  "cases": [
+    {
+      "id": "the-museum-cat",
+      "title": "The museum cat",
+      "grade": 6,
+      "item": {
+        "kind": "Photo",
+        "description": "The city museum posts a photo of an ancient Egyptian cat mummy."
+      },
+      "clues": {
+        "A": "The city museum’s official account posted it.",
+        "B": "The museum’s website lists it in its collection with a catalog number.",
+        "C": "The wrappings look oddly perfect, almost like a printed pattern.",
+        "D": "The post names the gallery room and says it returned from repair last month.",
+        "E": "Someone asks how old it is. The museum replies with an age and links the collection page.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Something can look too neat and still be real. A museum’s own records beat how it looks.",
+      "fib": {
+        "right": "Rats. I thought the neat wrapping would fool you.",
+        "wrong": "Ha! Real cat mummy. Its catalog number was right there."
+      }
+    },
+    {
+      "id": "the-robot-cleaner",
+      "title": "The robot cleaner",
+      "grade": 6,
+      "item": {
+        "kind": "News post",
+        "description": "A post says a 6th grader built a robot that cleans a whole school in an hour."
+      },
+      "clues": {
+        "A": "A page called Kid Genius News, created two weeks ago.",
+        "B": "No school or local paper mentions it.",
+        "C": "The robot looks real, but the school sign behind it has letters that don’t spell anything.",
+        "D": "It never names the student, the school or the town.",
+        "E": "Comments ask which school. The page posts another amazing kid story instead.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "A story that can’t be traced to a real person or place is a warning sign.",
+      "fib": {
+        "right": "Ugh. Scrambled letters on the sign. My weakness.",
+        "wrong": "Gotcha! No name, no school, no town. You believed a ghost."
+      }
+    },
+    {
+      "id": "the-book-report",
+      "title": "The book report",
+      "grade": 6,
+      "item": {
+        "kind": "Homework",
+        "description": "A classmate’s paragraph about the novel your class just read."
+      },
+      "clues": {
+        "A": "Your classmate Jordan turned it in.",
+        "B": "A study site has a paragraph with almost the same sentences.",
+        "C": "The writing is smooth, but it gets the main character’s sister’s name wrong.",
+        "D": "It never mentions anything from your class discussion of the ending.",
+        "E": "The teacher asks Jordan about his point. He can’t explain it.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "A real writer can explain their own ideas. Wrong details about a book you both read are a big clue.",
+      "fib": {
+        "right": "Hmph. The wrong sister’s name gave me away.",
+        "wrong": "Ha! He couldn’t explain his own paragraph, and you missed it."
+      }
+    },
+    {
+      "id": "the-frozen-bubble",
+      "title": "The frozen bubble",
+      "grade": 6,
+      "item": {
+        "kind": "Video",
+        "description": "A soap bubble freezes into ice crystals that spread across it like a special effect."
+      },
+      "clues": {
+        "A": "A weather reporter at your local TV station posted it.",
+        "B": "Many people in cold places have posted videos of the same thing.",
+        "C": "The crystals spread so perfectly it looks fake.",
+        "D": "She says it was well below freezing that morning and her kids blew the bubbles.",
+        "E": "Asked how, she explains: bubble soap, very cold air and no wind.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Nature can look like special effects. Many separate videos of the same thing is good evidence.",
+      "fib": {
+        "right": "Fine. Frozen bubbles are real. I hoped you didn’t know.",
+        "wrong": "Gotcha! Real bubble. Half the internet has filmed one."
+      }
+    },
+    {
+      "id": "the-friendly-new-player",
+      "title": "The friendly new player",
+      "grade": 6,
+      "item": {
+        "kind": "Game chat",
+        "description": "A new player called Nova compliments everyone in your game server."
+      },
+      "clues": {
+        "A": "The account was made yesterday and has no profile picture.",
+        "B": "The exact message “Love your builds, you’re so talented!” went to 40 players.",
+        "C": "Perfect spelling, and replies within a second, day and night.",
+        "D": "Nova never mentions anything specific about the game you’re playing together.",
+        "E": "You ask what Nova built last week. Nova changes the subject to a link for free coins.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "Bots can act friendly. Copy-paste compliments plus a link are a warning sign: don’t click, and tell an adult.",
+      "fib": {
+        "right": "Rats. Forty players, same compliment. Lazy of me.",
+        "wrong": "Gotcha! Nova’s a bot. You almost clicked my link."
+      }
+    },
+    {
+      "id": "grandmas-recipe-card",
+      "title": "Grandma’s recipe card",
+      "grade": 6,
+      "item": {
+        "kind": "Photo",
+        "description": "A stained, faded handwritten recipe card for cornbread, shared in your family group chat."
+      },
+      "clues": {
+        "A": "Your uncle posted it.",
+        "B": "It isn’t online anywhere.",
+        "C": "Some words are smudged, and one amount is crossed out and rewritten.",
+        "D": "Your uncle says it was in Grandma’s kitchen drawer and she always doubled the butter.",
+        "E": "You ask your mom. She remembers the same card.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Someone you trust who remembers it is strong evidence.",
+      "fib": {
+        "right": "Bah. Your mom remembered the card.",
+        "wrong": "Ha! Real card. Your own mom could have told you."
+      }
+    },
+    {
+      "id": "the-famous-quote",
+      "title": "The famous quote",
+      "grade": 6,
+      "item": {
+        "kind": "Website",
+        "description": "A quote site says a famous inventor once said, “Failure is just success that hasn’t been tagged yet.”"
+      },
+      "clues": {
+        "A": "A quote site with no author and no sources.",
+        "B": "The quote appears in no book, speech or interview you can find.",
+        "C": "It sounds wise and modern.",
+        "D": "It gives no date, book or speech it came from.",
+        "E": "You email for the source. An automatic reply says quotes are “curated by our system.”",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "Real quotes can be traced to where they were said. If nobody can find the source, don’t use it.",
+      "fib": {
+        "right": "Ugh. No source, no quote. You’re learning.",
+        "wrong": "Gotcha! Nobody ever said that. I made it up."
+      }
+    },
+    {
+      "id": "toast-the-lizard",
+      "title": "Toast the lizard",
+      "grade": 6,
+      "item": {
+        "kind": "Photo",
+        "description": "The school website shows the class bearded dragon wearing a tiny party hat."
+      },
+      "clues": {
+        "A": "The science teacher posted it on the school’s official website.",
+        "B": "The same lizard is in last year’s yearbook.",
+        "C": "The hat looks a bit fake and the lighting is strange.",
+        "D": "The post names the lizard, Toast, and says it was his fifth birthday.",
+        "E": "You ask the teacher. She shows you the hat in her desk drawer.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Strange lighting isn’t proof. Ask someone who was there.",
+      "fib": {
+        "right": "Hmph. She kept the hat.",
+        "wrong": "Ha! Toast is real, and so is the hat."
+      }
+    },
+    {
+      "id": "the-glowing-frog",
+      "title": "The glowing frog",
+      "grade": 6,
+      "item": {
+        "kind": "Video",
+        "description": "A short video shows a “newly discovered” glowing blue frog in a rainforest."
+      },
+      "clues": {
+        "A": "A channel that posts a new “discovered animal” every day.",
+        "B": "No science site or museum mentions the frog.",
+        "C": "In one frame, the frog’s toes blend into the leaf.",
+        "D": "It never names the scientists or the country.",
+        "E": "Comments ask where. The channel pins “Nature is amazing!”",
+        "F": "The description says “Made with creative tools.”"
+      },
+      "verdict": "ai",
+      "lesson": "Real discoveries are reported by named scientists in named places. Vague wording like “creative tools” can be a quiet label.",
+      "fib": {
+        "right": "Rats. You read the fine print.",
+        "wrong": "Gotcha! A new animal every day? That should have tipped you off."
+      }
+    },
+    {
+      "id": "the-thank-you-card",
+      "title": "The thank-you card",
+      "grade": 6,
+      "item": {
+        "kind": "Card",
+        "description": "Your lab partner gives you a typed thank-you card with perfect spelling and polished sentences."
+      },
+      "clues": {
+        "A": "Your lab partner Priya gave it to you in class.",
+        "B": "It isn’t online anywhere.",
+        "C": "The spelling is perfect and the sentences are very polished.",
+        "D": "It mentions the exact moment your volcano overflowed onto the teacher’s shoes.",
+        "E": "You ask her about it. She says her older sister helped fix her spelling.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Polished writing isn’t proof of AI. Details only someone who was there would know matter more.",
+      "fib": {
+        "right": "Bah. I bet on the perfect spelling.",
+        "wrong": "Ha! Priya wrote it. Nobody else knew about the shoes."
+      }
+    }
+  ]
+}

@@ -5,15 +5,17 @@
 //   same way and sends nothing anywhere.
 //
 // Every request a student device makes is in this file. The only data sent is
-// the class code, the case set id, and anonymous answers (which case, right or
-// wrong, which three question letters, and the final score).
+// the class code, the case file id, and anonymous answers: which case, where
+// it fell in the run, what was chosen (question letters or check numbers, the
+// verdict or plan), the final score, and for "How would you check?" files the
+// warm-up and wrap-up scores. Never a name, device id or anything typed.
 (function (root) {
   const CODE_KEY = 'ai-detective:class';
   const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const CODE_LENGTH = 6;
 
   let mode = 'demo';
-  let joined = null; // { code, caseSetId }
+  let joined = null; // class code
 
   function cleanCode(raw) {
     let out = '';
@@ -53,7 +55,7 @@
     return mode;
   }
 
-  // { caseSet, settings } or { error: 'missing' | 'expired' | 'slow-down' | 'network' }
+  // { caseSets, defaultSetId, settings } or { error: 'missing' | 'expired' | 'slow-down' | 'network' }
   async function join(rawCode) {
     const code = cleanCode(rawCode);
     if (code.length !== CODE_LENGTH) return { error: 'missing' };
@@ -68,27 +70,27 @@
     if (res.status === 429) return { error: 'slow-down' };
     if (!res.ok) return { error: 'network' };
     const body = await res.json();
-    joined = { code, caseSetId: body.caseSet.id };
+    joined = code;
     writeLocal(CODE_KEY, code);
-    return { caseSet: body.caseSet, settings: body.class };
+    return { caseSets: body.caseSets, defaultSetId: body.defaultSetId, settings: body.class };
   }
 
-  // The demo's cases: embedded in the page, or the default set from cases/.
-  async function demoCaseSet() {
+  // The demo's case files: embedded in the page, or every file in cases/.
+  async function demoCaseSets() {
     const inline = root.document.getElementById('demo-data');
     if (inline) return JSON.parse(inline.textContent);
     const index = await (await fetch('cases/sets.json')).json();
-    const entry = index.sets.find((s) => s.id === index.default);
-    return (await fetch('cases/' + entry.file)).json();
+    const caseSets = await Promise.all(index.sets.map(async (e) => (await fetch('cases/' + e.file)).json()));
+    return { caseSets, defaultSetId: index.default };
   }
 
-  async function send(event) {
+  async function send(caseSetId, event) {
     if (mode !== 'server' || !joined) return;
     try {
       const res = await fetch('api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classCode: joined.code, caseSetId: joined.caseSetId, event }),
+        body: JSON.stringify({ classCode: joined, caseSetId, event }),
       });
       await res.text();
     } catch (e) {
@@ -104,7 +106,7 @@
   root.AIDetectiveStore = {
     init,
     join,
-    demoCaseSet,
+    demoCaseSets,
     send,
     leave,
     cleanCode,

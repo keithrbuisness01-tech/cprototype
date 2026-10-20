@@ -10,6 +10,8 @@
   let me = null;
   let classes = [];
   let current = null;
+  let reportSetId = null; // which case file the report shows
+  let report = null; // the last report loaded
 
   // ---- Server calls ------------------------------------------------------------
 
@@ -61,9 +63,12 @@
   // ---- Classes -----------------------------------------------------------------
 
   function caseSetName(id) {
+    if (!id) return 'Students choose the case file';
     const set = me.caseSets.find((s) => s.id === id);
-    return set ? 'Grade ' + set.grade + ' · ' + set.title : id;
+    return set ? set.label + (set.grade ? ' · Grade ' + set.grade : '') + ' · ' + set.blurb : id;
   }
+
+  const setQuery = () => (reportSetId ? '?set=' + encodeURIComponent(reportSetId) : '');
 
   function dateText(t) {
     return new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -98,25 +103,123 @@
     $('code-status').textContent = current.codeActive
       ? 'Works until ' + dateText(current.codeExpiresAt)
       : 'Expired. Reset the code in Options to get a new one.';
-    $('open-summary').href = '/teacher/summary/' + encodeURIComponent(current.id);
+    $('open-summary').href = '/teacher/summary/' + encodeURIComponent(current.id) + setQuery();
   }
 
   async function loadReport() {
     if (!current) return;
     $('report-body').innerHTML = '';
     $('report-body').appendChild(el('p', 'muted', 'Loading…'));
-    const { ok, data } = await api('/api/teacher/classes/' + encodeURIComponent(current.id) + '/report');
+    const { ok, data } = await api('/api/teacher/classes/' + encodeURIComponent(current.id) + '/report' + setQuery());
     if (!ok) {
       $('report-body').innerHTML = '';
       $('report-body').appendChild(el('p', 'error', "Couldn't load the report. Try Refresh."));
       return;
     }
-    const set = me.caseSets.find((s) => s.id === data.caseSet.id);
-    Report.render($('report-body'), data.summary, set ? set.count : data.summary.perCase.length);
+    report = data;
+    reportSetId = data.caseSet.id;
+    const picker = $('report-set');
+    picker.innerHTML = '';
+    for (const s of data.sets) {
+      const o = el('option', null, s.label + (s.answered ? ' · ' + s.answered + ' answers' : ' · not played yet'));
+      o.value = s.id;
+      picker.appendChild(o);
+    }
+    picker.value = reportSetId;
+    $('open-summary').href = '/teacher/summary/' + encodeURIComponent(current.id) + setQuery();
+    $('summary-note').textContent = '';
+    Report.render($('report-body'), data.summary, data.caseSet);
+    renderTeaching(data.teaching);
+  }
+
+  $('report-set').addEventListener('change', () => {
+    reportSetId = $('report-set').value;
+    loadReport();
+  });
+
+  // A plain-text summary of the report, to paste into an email or a doc.
+  function summaryText() {
+    const s = report.summary;
+    const lines = ['AI Detective · ' + current.label + ' · ' + report.caseSet.label + (report.caseSet.grade ? ' (Grade ' + report.caseSet.grade + ')' : '')];
+    lines.push(s.finished + ' finished, ' + s.started + ' started. Average score ' + (s.averageScore === null ? '–' : s.averageScore) + ' of ' + s.maxScore + '.');
+    if (s.rules === 'investigate') {
+      lines.push('Warm-up average ' + (s.quiz.preAvg === null ? '–' : s.quiz.preAvg) + ' of ' + s.quiz.length + ', wrap-up average ' +
+        (s.quiz.postAvg === null ? '–' : s.quiz.postAvg) + ' of ' + s.quiz.length + '. ' + (s.quiz.improvedPct === null ? '–' : s.quiz.improvedPct) + '% improved.');
+      lines.push((s.strongShare === null ? '–' : s.strongShare) + '% of checks opened were strong. ' + (s.luckyPct === null ? '–' : s.luckyPct) + '% of right answers were lucky guesses.');
+    } else if (s.early !== null && s.late !== null) {
+      lines.push('First ' + s.trendWindow + ' cases ' + s.early + '% right, last ' + s.trendWindow + ' cases ' + s.late + '% right.');
+    }
+    if (s.fooledBy.length) lines.push('Fooled the class: ' + s.fooledBy.map((c) => c.title + ' (' + c.pct + '% right)').join(', ') + '.');
+    if (s.suggestion) lines.push('Next step: revisit ' + s.suggestion.caseTitle + '. ' + s.suggestion.lesson);
+    lines.push('Anonymous class totals only. No student names or individual scores are collected.');
+    return lines.join('\n');
+  }
+
+  $('copy-summary').addEventListener('click', async () => {
+    if (!report) return;
+    const text = summaryText();
+    $('summary-note').textContent = (await copy(text)) ? 'Summary copied.' : text;
+  });
+
+  // ---- Lesson guide and standards ------------------------------------------------
+
+  function renderTeaching(teaching) {
+    $('teaching').hidden = !teaching;
+    if (!teaching) return;
+    $('teaching-title').textContent = 'Teaching the ' + teaching.pack + ' case pack';
+    const guide = $('panel-guide');
+    guide.innerHTML = '';
+    guide.appendChild(el('p', 'guide-summary', teaching.guide.summary));
+    const wrap = el('div', 'table-wrap');
+    const table = el('table', 'standards-table');
+    const head = el('tr');
+    head.append(el('th', null, 'Time'), el('th', null, 'What happens'));
+    table.appendChild(head);
+    for (const row of teaching.guide.plan) {
+      const tr = el('tr');
+      tr.append(el('td', null, row.time), el('td', null, row.what));
+      table.appendChild(tr);
+    }
+    wrap.appendChild(table);
+    guide.append(wrap, el('h3', null, 'Key idea for students'), el('p', null, teaching.guide.keyIdea), el('h3', null, 'Extension'), el('p', null, teaching.guide.extension));
+    renderStandards();
+  }
+
+  function renderStandards() {
+    if (!report || !report.teaching) return;
+    const t = report.teaching;
+    const grade = $('standards-grade').value;
+    const title = (id) => (t.cases.find((c) => c.id === id) || { title: id }).title;
+    const table = $('standards-table');
+    table.innerHTML = '';
+    const head = el('tr');
+    head.append(el('th', null, 'Standard'), el('th', null, 'What it covers'), el('th', null, 'Cases'));
+    table.appendChild(head);
+    for (const s of t.standards) {
+      const tr = el('tr');
+      const code = el('td');
+      code.appendChild(el('strong', null, s.code.split('{grade}').join(grade)));
+      tr.append(code, el('td', null, s.text), el('td', null, s.cases.map(title).join(', ')));
+      table.appendChild(tr);
+    }
+    $('standards-note').textContent = t.standardsNote || '';
+  }
+
+  $('standards-grade').addEventListener('change', renderStandards);
+
+  for (const tab of document.querySelectorAll('#teaching [role="tab"]')) {
+    tab.addEventListener('click', () => {
+      for (const other of document.querySelectorAll('#teaching [role="tab"]')) {
+        const on = other === tab;
+        other.setAttribute('aria-selected', String(on));
+        $(other.getAttribute('aria-controls')).hidden = !on;
+      }
+    });
   }
 
   function select(id) {
     current = classes.find((c) => c.id === id) || classes[0] || null;
+    reportSetId = current ? current.caseSetId : null;
     renderPicker();
     renderClass();
     loadReport();
@@ -174,7 +277,7 @@
     $('planner-status').textContent = 'Writing a plan from your class totals. This can take up to a minute…';
     $('planner-output').hidden = true;
     try {
-      const { ok, data } = await api('/api/teacher/classes/' + encodeURIComponent(current.id) + '/plan', { method: 'POST', body: {} });
+      const { ok, data } = await api('/api/teacher/classes/' + encodeURIComponent(current.id) + '/plan', { method: 'POST', body: { caseSetId: reportSetId } });
       if (ok) {
         $('planner-output').textContent = data.plan;
         $('planner-output').hidden = false;
@@ -249,23 +352,33 @@
       }));
       codeGroup.append(expireRow);
 
-      // Grade level and case set
+      // Which case file the class plays: one the teacher picks, or the
+      // student's choice on the start screen.
       const setRow = el('div', 'opt-group');
-      const setLabel = el('label', 'opt-legend', 'Grade level and case set');
+      const setLabel = el('label', 'opt-legend', 'Case file for this class');
       setLabel.htmlFor = 'opt-caseset';
       const setSelect = el('select');
       setSelect.id = 'opt-caseset';
+      const choose = el('option', null, 'Let students choose');
+      choose.value = '';
+      setSelect.appendChild(choose);
       for (const s of me.caseSets) {
-        const o = el('option', null, 'Grade ' + s.grade + ' · ' + s.title + ' (' + s.count + ' cases)');
+        const o = el('option', null, s.label + (s.grade ? ' · Grade ' + s.grade : '') + ' · ' + s.blurb + ' (' + s.count + ' cases)');
         o.value = s.id;
         setSelect.appendChild(o);
       }
-      setSelect.value = current.caseSetId;
+      setSelect.value = current.caseSetId || '';
       setSelect.addEventListener('change', async () => {
-        const updated = await classAction('/settings', { caseSetId: setSelect.value },
-          'Switch this class to ' + caseSetName(setSelect.value) + '? Students who are mid-game will need to rejoin.', 'Switch');
-        if (updated) loadReport();
-        else setSelect.value = current.caseSetId;
+        const value = setSelect.value || null;
+        const updated = await classAction('/settings', { caseSetId: value },
+          value ? 'Have this class play ' + caseSetName(value) + '? Students will skip the picker and go straight to it. Anyone mid-game will need to rejoin.'
+            : 'Let students choose their own case file?', 'Save');
+        if (updated) {
+          if (value) reportSetId = value;
+          loadReport();
+        } else {
+          setSelect.value = current.caseSetId || '';
+        }
       });
       setRow.append(setLabel, setSelect);
 
@@ -292,7 +405,8 @@
       if (current.share) {
         shareBtns.append(
           button('Copy results link', async () => {
-            note.textContent = (await copy(current.share.url)) ? 'Results link copied. It works until ' + dateText(current.share.expiresAt) + '.' : current.share.url;
+            const url = current.share.url + setQuery();
+            note.textContent = (await copy(url)) ? 'Results link for ' + caseSetName(reportSetId).split(' · ')[0] + ' copied. It works until ' + dateText(current.share.expiresAt) + '.' : url;
           }),
           button('Turn off results link', () => classAction('/unshare', null,
             'Turn off the results link? Anyone you sent it to will no longer be able to open it.', 'Turn off'), 'ghost danger')
@@ -301,7 +415,10 @@
         shareBtns.append(button('Create results link', async () => {
           const updated = await classAction('/share', null,
             'Create a read-only link to the one-page results summary? It shows anonymous class totals only and stops working after 30 days.', 'Create link');
-          if (updated && updated.share) note.textContent = (await copy(updated.share.url)) ? 'Results link created and copied.' : updated.share.url;
+          if (updated && updated.share) {
+            const url = updated.share.url + setQuery();
+            note.textContent = (await copy(url)) ? 'Results link created and copied.' : url;
+          }
         }));
       }
       share.append(shareBtns, note);

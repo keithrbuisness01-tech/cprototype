@@ -4,10 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const Options = require('../js/options.js');
 
-test('defaults are standard text, sound off, Case Board, no high contrast', () => {
+test('defaults are standard text, sound off, Fib talking, Case Board, no high contrast', () => {
   assert.deepEqual(Options.defaults(false), {
     textSize: 'standard',
     sound: false,
+    taunts: true,
     reducedMotion: false,
     highContrast: false,
     theme: 'case-board',
@@ -20,7 +21,7 @@ test('reduced motion starts from the device setting until the student picks', ()
 });
 
 test('valid saved choices are kept', () => {
-  const saved = { textSize: 'xlarge', sound: true, reducedMotion: true, highContrast: true, theme: 'night-shift' };
+  const saved = { textSize: 'xlarge', sound: true, taunts: false, reducedMotion: true, highContrast: true, theme: 'night-shift' };
   assert.deepEqual(Options.normalize(saved, false), saved);
 });
 
@@ -29,14 +30,14 @@ test('bad, old or tampered saves fall back to defaults', () => {
   assert.deepEqual(Options.normalize(null, false), d);
   assert.deepEqual(Options.normalize('large', false), d);
   assert.deepEqual(Options.parse('not json', false), d);
-  const odd = Options.normalize({ textSize: 'huge', sound: 'yes', theme: 'javascript:alert(1)', highContrast: 1, name: 'Sam' }, false);
+  const odd = Options.normalize({ textSize: 'huge', sound: 'yes', theme: 'javascript:alert(1)', highContrast: 1, taunts: 'off', name: 'Sam' }, false);
   assert.deepEqual(odd, d);
   assert.equal('name' in odd, false, 'unknown keys are dropped');
 });
 
 test('only known keys are saved', () => {
   const text = Options.serialize({ textSize: 'large', classCode: 'ROOM12', theme: 'calm' });
-  assert.deepEqual(Object.keys(JSON.parse(text)).sort(), ['highContrast', 'reducedMotion', 'sound', 'textSize', 'theme']);
+  assert.deepEqual(Object.keys(JSON.parse(text)).sort(), ['highContrast', 'reducedMotion', 'sound', 'taunts', 'textSize', 'theme']);
 });
 
 test('options and sound code never talk to the network', () => {

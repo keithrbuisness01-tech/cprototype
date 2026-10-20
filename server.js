@@ -31,8 +31,8 @@ const PUBLIC_FILES = ['index.html', 'sign-in.html'];
 const PUBLIC_DIRS = ['css', 'js', 'assets', 'cases'];
 const TEACHER_FILES = ['index.html', 'teacher.js'];
 
-// Exactly the keys a student device may send, per event type.
-const EVENT_KEYS = { start: ['type'], case: ['type', 'caseIndex', 'correct', 'picks'], finish: ['type', 'score'] };
+// Exactly the keys a student request may have. The event's own fields are
+// checked by Game.applyEvent against the case file.
 const PAYLOAD_KEYS = ['caseSetId', 'classCode', 'event'];
 const sameKeys = (obj, keys) => obj && typeof obj === 'object' && !Array.isArray(obj) &&
   Object.keys(obj).sort().join() === keys.slice().sort().join();
@@ -77,11 +77,25 @@ function createServer(options = {}) {
   const planner = plannerService(store, config, { client, now });
   const allow = H.rateLimiter();
 
+  // Totals are kept per class and per case file.
   function totalsFor(cls, caseSet) {
     const byClass = store.totals.data[cls.id] || (store.totals.data[cls.id] = {});
     const t = byClass[caseSet.id];
-    if (t && Array.isArray(t.cases) && t.cases.length === caseSet.cases.length) return t;
-    return (byClass[caseSet.id] = Game.emptyTotals(caseSet.cases.length));
+    const fresh = Game.emptyTotals(caseSet);
+    if (t && t.rules === caseSet.rules && Array.isArray(t.cases) && t.cases.length === caseSet.cases.length &&
+        Array.isArray(t.positions) && Array.isArray(t.scores) && t.scores.length === fresh.scores.length) return t;
+    return (byClass[caseSet.id] = fresh);
+  }
+
+  // The case file a report is about: the one asked for, else the class's own,
+  // else the default.
+  function reportSet(cls, requested) {
+    return caseSets.get(requested) || caseSets.get(classes.caseSetOf(cls)) || caseSets.get(caseSets.defaultId);
+  }
+
+  function setsPlayed(cls) {
+    const byClass = store.totals.data[cls.id] || {};
+    return caseSets.list().map((s) => Object.assign(s, { answered: byClass[s.id] ? byClass[s.id].cases.reduce((n, c) => n + c.answered, 0) : 0 }));
   }
 
   function classView(cls) {
@@ -96,15 +110,15 @@ function createServer(options = {}) {
       codeActive: active,
       codeExpiresAt: cls.codeExpiresAt,
       joinUrl: config.publicUrl + '/?class=' + cls.code,
-      caseSetId: cls.caseSetId,
+      caseSetId: classes.caseSetOf(cls),
       soundMuted: cls.soundMuted,
       share,
     };
   }
 
-  function summaryFor(cls) {
-    const caseSet = caseSets.get(cls.caseSetId);
-    return { caseSet, summary: Game.summarize(totalsFor(cls, caseSet), caseSet.cases, QUESTIONS) };
+  function summaryFor(cls, requested) {
+    const caseSet = reportSet(cls, requested);
+    return { caseSet, summary: Game.summarize(totalsFor(cls, caseSet), caseSet, QUESTIONS) };
   }
 
   const sessionCookie = (value, maxAge) => H.cookie('ad_session', value, { maxAge, secure: config.secureCookies });
@@ -119,31 +133,45 @@ function createServer(options = {}) {
       if (!allow('join:' + ctx.ip, config.rateLimits.join, 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
       const found = classes.lookupCode(ctx.url.searchParams.get('code'));
       if (found.status !== 'ok') return H.sendJson(ctx.res, found.status === 'expired' ? 410 : 404, { error: 'code-' + found.status });
-      const caseSet = caseSets.get(found.cls.caseSetId);
+      // A set picked by the teacher, or every case file for the student to choose from.
+      const fixed = classes.caseSetOf(found.cls);
       H.sendJson(ctx.res, 200, {
-        class: { grade: caseSet.grade, soundMuted: found.cls.soundMuted },
-        caseSet: { id: caseSet.id, title: caseSet.title, grade: caseSet.grade, cases: caseSet.cases },
+        class: { soundMuted: found.cls.soundMuted, caseSetId: fixed },
+        caseSets: fixed ? [caseSets.get(fixed)] : caseSets.all(),
+        defaultSetId: fixed || caseSets.defaultId,
       });
     } },
 
     { method: 'POST', path: '/api/events', auth: 'public', handler: async (ctx) => {
       if (!allow('events:' + ctx.ip, config.rateLimits.events, 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
       const payload = await H.readJson(ctx.req);
-      if (!sameKeys(payload, PAYLOAD_KEYS) || !payload.event || !EVENT_KEYS[payload.event.type] ||
-          !sameKeys(payload.event, EVENT_KEYS[payload.event.type])) {
-        return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
-      }
+      if (!sameKeys(payload, PAYLOAD_KEYS) || typeof payload.caseSetId !== 'string') return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
       const found = classes.lookupCode(payload.classCode);
       if (found.status !== 'ok') return H.sendJson(ctx.res, found.status === 'expired' ? 410 : 404, { error: 'code-' + found.status });
-      if (payload.caseSetId !== found.cls.caseSetId) return H.sendJson(ctx.res, 409, { error: 'case-set-changed' });
-      const totals = totalsFor(found.cls, caseSets.get(found.cls.caseSetId));
-      if (!Game.applyEvent(totals, payload.event)) return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
+      const fixed = classes.caseSetOf(found.cls);
+      const set = caseSets.get(payload.caseSetId);
+      if (!set || (fixed && payload.caseSetId !== fixed)) return H.sendJson(ctx.res, 409, { error: 'case-set-changed' });
+      const totals = totalsFor(found.cls, set);
+      if (!Game.applyEvent(totals, payload.event, set)) return H.sendJson(ctx.res, 400, { error: 'invalid-event' });
       store.totals.save();
       H.sendJson(ctx.res, 200, { ok: true });
     } },
 
     { method: 'GET', path: '/auth/providers', auth: 'public', handler: (ctx) => {
-      H.sendJson(ctx.res, 200, { providers: auth.enabled().map((name) => ({ name, label: auth.providers[name].label })) });
+      H.sendJson(ctx.res, 200, {
+        providers: auth.enabled().map((name) => ({ name, label: auth.providers[name].label })),
+        teacherCode: Boolean(config.teacherCode),
+      });
+    } },
+
+    { method: 'POST', path: '/auth/code', auth: 'public', handler: async (ctx) => {
+      if (!H.sameOrigin(ctx.req, config)) return H.sendJson(ctx.res, 403, { error: 'cross-site' });
+      if (!allow('code:' + ctx.ip, config.rateLimits.code, 15 * 60000)) return H.sendJson(ctx.res, 429, { error: 'slow-down' });
+      const body = await H.readJson(ctx.req);
+      const session = auth.codeSignIn(typeof body.code === 'string' ? body.code : '');
+      if (!session) return H.sendJson(ctx.res, 401, { error: config.teacherCode ? 'wrong-code' : 'code-off' });
+      ctx.res.setHeader('Set-Cookie', sessionCookie(session.id, config.sessionMaxHours * 3600));
+      H.sendJson(ctx.res, 200, { ok: true });
     } },
 
     { method: 'GET', path: '/auth/:provider', auth: 'public', handler: (ctx) => {
@@ -174,7 +202,7 @@ function createServer(options = {}) {
     { method: 'GET', path: '/s/:token', auth: 'public', handler: (ctx) => {
       const cls = classes.byShareToken(ctx.params.token);
       if (!cls) return H.sendHtml(ctx.res, 404, '<!doctype html><title>Link expired</title><p>This results link has expired or was turned off.</p>');
-      const { summary, caseSet } = summaryFor(cls);
+      const { summary, caseSet } = summaryFor(cls, ctx.url.searchParams.get('set'));
       H.sendHtml(ctx.res, 200, renderSummaryPage({ summary, caseSet, label: cls.label, generatedAt: now(), shared: true }));
     } },
 
@@ -185,7 +213,7 @@ function createServer(options = {}) {
     { method: 'GET', path: '/teacher/summary/:id', auth: 'teacher', page: true, handler: (ctx) => {
       const cls = classes.ownedBy(ctx.session.email, ctx.params.id);
       if (!cls) return H.sendHtml(ctx.res, 404, '<!doctype html><title>Not found</title><p>Class not found.</p>');
-      const { summary, caseSet } = summaryFor(cls);
+      const { summary, caseSet } = summaryFor(cls, ctx.url.searchParams.get('set'));
       H.sendHtml(ctx.res, 200, renderSummaryPage({ summary, caseSet, label: cls.label, generatedAt: now(), shared: false }));
     } },
     { method: 'GET', path: '/teacher/:file', auth: 'teacher', page: true, handler: (ctx) => {
@@ -196,7 +224,7 @@ function createServer(options = {}) {
     // ---- Teacher APIs ----
     { method: 'GET', path: '/api/teacher/me', auth: 'teacher', handler: (ctx) => {
       H.sendJson(ctx.res, 200, {
-        email: maskEmail(ctx.session.email),
+        email: ctx.session.provider === 'code' ? 'Teacher code' : maskEmail(ctx.session.email),
         idleMinutes: config.idleMinutes,
         supportUrl: config.supportUrl,
         plannerEnabled: config.ai.enabled,
@@ -212,13 +240,23 @@ function createServer(options = {}) {
       H.sendJson(ctx.res, 201, { class: classView(classes.create(ctx.session.email, { label: body.label })) });
     } },
     { method: 'GET', path: '/api/teacher/classes/:id/report', auth: 'teacher', cls: true, handler: (ctx) => {
-      const { summary, caseSet } = summaryFor(ctx.cls);
-      H.sendJson(ctx.res, 200, { class: classView(ctx.cls), caseSet: { id: caseSet.id, title: caseSet.title, grade: caseSet.grade }, summary });
+      const { summary, caseSet } = summaryFor(ctx.cls, ctx.url.searchParams.get('set'));
+      const teaching = caseSet.rules === 'investigate'
+        ? { pack: caseSet.pack, guide: caseSet.guide, standards: caseSet.standards, standardsNote: caseSet.standardsNote, cases: caseSet.cases.map((c) => ({ id: c.id, title: c.title })) }
+        : null;
+      H.sendJson(ctx.res, 200, {
+        class: classView(ctx.cls),
+        caseSet: { id: caseSet.id, title: caseSet.title, label: caseSet.label, rules: caseSet.rules, grade: caseSet.grade, count: caseSet.cases.length },
+        sets: setsPlayed(ctx.cls),
+        summary,
+        teaching,
+      });
     } },
     { method: 'POST', path: '/api/teacher/classes/:id/settings', auth: 'teacher', cls: true, handler: async (ctx) => {
       const body = await H.readJson(ctx.req);
       const changes = {};
       for (const key of ['caseSetId', 'soundMuted', 'label']) if (key in body) changes[key] = body[key];
+      if (changes.caseSetId === '') changes.caseSetId = null;
       if (!classes.update(ctx.cls, changes)) return H.sendJson(ctx.res, 400, { error: 'invalid-settings' });
       H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
     } },
@@ -241,7 +279,8 @@ function createServer(options = {}) {
       H.sendJson(ctx.res, 200, { class: classView(ctx.cls) });
     } },
     { method: 'POST', path: '/api/teacher/classes/:id/plan', auth: 'teacher', cls: true, handler: async (ctx) => {
-      const { summary, caseSet } = summaryFor(ctx.cls);
+      const body = await H.readJson(ctx.req);
+      const { summary, caseSet } = summaryFor(ctx.cls, body.caseSetId);
       const result = await planner.plan(ctx.session.email, summary, caseSet);
       H.sendJson(ctx.res, result.status, Object.assign({ budget: planner.budget() }, result.body));
     } },

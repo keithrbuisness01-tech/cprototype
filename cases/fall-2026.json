@@ -1,0 +1,377 @@
+{
+  "id": "fall-2026",
+  "title": "Fall 2026 case pack",
+  "label": "Fall 2026",
+  "blurb": "How would you check?",
+  "rules": "investigate",
+  "grade": null,
+  "pack": "Fall 2026",
+  "packNote": "New cases every semester.",
+  "checkQuiz": [
+    {
+      "question": "A post has 2 million likes. What does that tell you?",
+      "options": [
+        "It’s probably true",
+        "Lots of people saw it, but that doesn’t prove it’s true",
+        "An expert must have checked it"
+      ],
+      "answer": 1
+    },
+    {
+      "question": "A chatbot gives you an answer very confidently. What should you do?",
+      "options": [
+        "Trust it, since it sounds sure",
+        "Check it with another source you can trust",
+        "Ask it again, and if the answer stays the same it’s true"
+      ],
+      "answer": 1
+    },
+    {
+      "question": "You see a surprising photo online. What’s the best first step?",
+      "options": [
+        "Zoom in and look for weird details",
+        "Search where else the photo has appeared",
+        "Share it and ask your friends"
+      ],
+      "answer": 1
+    },
+    {
+      "question": "When is using AI for schoolwork responsible?",
+      "options": [
+        "When nobody can tell",
+        "When you follow your teacher’s rules and still do your own thinking",
+        "When the assignment is short"
+      ],
+      "answer": 1
+    }
+  ],
+  "discussion": [
+    "Which check helped you the most today, and why was it strong?",
+    "The library announcement was real. How do you avoid becoming so suspicious that you don’t trust anything?",
+    "What is one rule you’ll use the next time an AI tool gives you an answer?"
+  ],
+  "guide": {
+    "summary": "One class period, about 45 minutes. One student per computer, or project it for whole-class play.",
+    "plan": [
+      {
+        "time": "5 min",
+        "what": "Warm-up check (4 questions). Don’t discuss answers yet."
+      },
+      {
+        "time": "20 min",
+        "what": "Students play the six cases against Fib. They earn points for strong checks, not lucky guesses."
+      },
+      {
+        "time": "5 min",
+        "what": "Wrap-up check (same 4 questions). Students see their change."
+      },
+      {
+        "time": "15 min",
+        "what": "Discussion using the prompts on the final screen."
+      }
+    ],
+    "keyIdea": "The goal isn’t guessing “AI or not.” It’s asking “how would I check?” Strong checks look outside the content (where it came from, who made it, what trusted sources say). Weak checks look only at the content itself or at how popular it is.",
+    "extension": "Have students bring one real post or claim they saw this week and run two strong checks on it as homework."
+  },
+  "standards": [
+    {
+      "code": "RI.{grade}.8",
+      "text": "Evaluate the claims in a text and whether the evidence supports them.",
+      "cases": [
+        "storm-shark",
+        "famous-quote",
+        "confident-chatbot"
+      ]
+    },
+    {
+      "code": "W.{grade}.8",
+      "text": "Gather information from multiple sources and judge each source’s credibility.",
+      "cases": [
+        "famous-quote",
+        "library-hours",
+        "confident-chatbot"
+      ]
+    },
+    {
+      "code": "SL.{grade}.2",
+      "text": "Analyze ideas and information presented in different media and formats.",
+      "cases": [
+        "storm-shark",
+        "perfect-reviews"
+      ]
+    },
+    {
+      "code": "W.{grade}.4 / W.{grade}.10",
+      "text": "Produce clear writing of one’s own (connects to responsible AI use).",
+      "cases": [
+        "using-ai-right"
+      ]
+    }
+  ],
+  "standardsNote": "Based on Common Core ELA. Check your state’s version before listing these in a lesson plan.",
+  "cases": [
+    {
+      "id": "storm-shark",
+      "title": "The storm shark",
+      "kind": "investigate",
+      "fib": {
+        "taunt": "This was posted last night. A shark on the highway! Share it before it gets taken down.",
+        "neutral": "A photo is going around after a storm. Investigate before you decide."
+      },
+      "evidence": {
+        "type": "post",
+        "avatar": "SN",
+        "account": "StormNewsLive",
+        "image": {
+          "src": "storm-shark.svg",
+          "alt": "A photo of a flooded highway with a shark fin sticking out of the water next to a half-sunk car"
+        },
+        "text": "Shark swimming down the highway after last night’s storm!! 🦈🌊",
+        "meta": "2.1M likes"
+      },
+      "checks": [
+        {
+          "label": "Search where else this photo has appeared",
+          "result": "The same photo was posted during three different storms, years apart.",
+          "strong": true
+        },
+        {
+          "label": "Look at who posted it",
+          "result": "The account was made two weeks ago and only posts viral pictures.",
+          "strong": true
+        },
+        {
+          "label": "Count the likes",
+          "result": "2.1 million likes. Lots of people saw it, but likes don’t prove anything is real.",
+          "strong": false
+        },
+        {
+          "label": "Zoom in for weird details",
+          "result": "The water looks a little odd, but it’s hard to tell. Eyes alone can’t settle this.",
+          "strong": false
+        }
+      ],
+      "verdict": "distrust",
+      "explain": "A photo that shows up in many different storms isn’t from last night. Checking where a picture came from beats staring at it.",
+      "skill": "Evaluating sources across media"
+    },
+    {
+      "id": "famous-quote",
+      "title": "The famous quote",
+      "kind": "investigate",
+      "fib": {
+        "taunt": "Einstein said it, so it must be true. He’s a genius!",
+        "neutral": "A quote poster is being shared. Investigate before you decide."
+      },
+      "evidence": {
+        "type": "quote",
+        "quote": "“Reading is for people with no imagination.”",
+        "author": "— Albert Einstein",
+        "meta": "Shared 48,000 times"
+      },
+      "checks": [
+        {
+          "label": "Search a trusted quote collection",
+          "result": "No record of Einstein ever writing or saying this.",
+          "strong": true
+        },
+        {
+          "label": "Find the earliest place it appeared",
+          "result": "The quote first shows up on a meme page in recent years, decades after Einstein died.",
+          "strong": true
+        },
+        {
+          "label": "Ask: does it sound like him?",
+          "result": "Maybe? But “sounds right” is a feeling, not evidence.",
+          "strong": false
+        },
+        {
+          "label": "Check if the poster looks official",
+          "result": "It looks fancy. Anyone can make a fancy poster.",
+          "strong": false
+        }
+      ],
+      "verdict": "distrust",
+      "explain": "Putting a famous name on a sentence doesn’t make it real. Ask “where is the original?” and trace the claim back.",
+      "skill": "Tracing claims to their evidence"
+    },
+    {
+      "id": "library-hours",
+      "title": "Library hours",
+      "kind": "investigate",
+      "fib": {
+        "taunt": "Too good to be true! Nobody keeps a library open that late. Total fake.",
+        "neutral": "An announcement about your local library. Investigate before you decide."
+      },
+      "evidence": {
+        "type": "webpage",
+        "url": "cityhillspubliclibrary.org/news/longer-hours",
+        "heading": "Longer weekday hours start in November",
+        "paragraphs": [
+          "Starting November 2, all branches will stay open until 9 p.m. Monday through Thursday."
+        ],
+        "note": "Posted October 12, 2026 by R. Alvarez, Branch Services"
+      },
+      "checks": [
+        {
+          "label": "Visit the library’s official site directly",
+          "result": "The same announcement is on the library’s real homepage.",
+          "strong": true
+        },
+        {
+          "label": "Check the date and the author",
+          "result": "Dated this month, with a named staff member you can contact.",
+          "strong": true
+        },
+        {
+          "label": "Read the comments",
+          "result": "People are arguing in the comments. That tells you about the comments, not the facts.",
+          "strong": false
+        },
+        {
+          "label": "Ask: does it feel too good to be true?",
+          "result": "Good news can be real too. Feelings aren’t a check.",
+          "strong": false
+        }
+      ],
+      "verdict": "trust",
+      "explain": "Not everything surprising is fake. An official source, a recent date and a named author are good signs, and Fib was wrong this time.",
+      "skill": "Assessing credibility of a source"
+    },
+    {
+      "id": "perfect-reviews",
+      "title": "The perfect reviews",
+      "kind": "investigate",
+      "fib": {
+        "taunt": "Fifty five-star reviews! This homework app must be the best ever. Download it now.",
+        "neutral": "A new app has a lot of glowing reviews. Investigate before you decide."
+      },
+      "evidence": {
+        "type": "reviews",
+        "url": "appstore page: HomeworkHero",
+        "reviews": [
+          {
+            "stars": 5,
+            "text": "This app is AMAZING, it changed my grades forever!!!"
+          },
+          {
+            "stars": 5,
+            "text": "This app is AMAZING, it changed my grades completely!!"
+          },
+          {
+            "stars": 5,
+            "text": "AMAZING app, it changed my grades forever!!!"
+          }
+        ],
+        "note": "4.9 average from 50 reviews"
+      },
+      "checks": [
+        {
+          "label": "Compare the reviews to each other",
+          "result": "Most use nearly the same words, and all were posted on the same day.",
+          "strong": true
+        },
+        {
+          "label": "Check the reviewers’ profiles",
+          "result": "Almost every reviewer has written only this one review.",
+          "strong": true
+        },
+        {
+          "label": "Look at the star average",
+          "result": "4.9 stars sounds great, but fake reviews raise the average too.",
+          "strong": false
+        },
+        {
+          "label": "Count the exclamation marks",
+          "result": "Lots of them! But real people get excited too. Style alone isn’t proof.",
+          "strong": false
+        }
+      ],
+      "verdict": "distrust",
+      "explain": "Copy-paste reviews from brand-new accounts on one day are a pattern, not a crowd. Look for patterns across many pieces, not one.",
+      "skill": "Analyzing patterns in evidence"
+    },
+    {
+      "id": "confident-chatbot",
+      "title": "The confident chatbot",
+      "kind": "investigate",
+      "fib": {
+        "taunt": "The chatbot said it really confidently. Computers don’t make mistakes!",
+        "neutral": "A student asked a chatbot a question for a project. Investigate before you decide."
+      },
+      "evidence": {
+        "type": "chat",
+        "messages": [
+          {
+            "from": "me",
+            "text": "Can you see the Great Wall of China from the Moon?"
+          },
+          {
+            "from": "bot",
+            "text": "Yes! The Great Wall of China is the only human-made structure clearly visible from the Moon with the naked eye."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "label": "Check a space agency or encyclopedia",
+          "result": "Astronauts report the Wall can’t be seen from the Moon with the naked eye. It’s far too narrow.",
+          "strong": true
+        },
+        {
+          "label": "Ask the chatbot for its sources",
+          "result": "It gives no source you can actually open and check.",
+          "strong": true
+        },
+        {
+          "label": "Ask the chatbot again",
+          "result": "It says the same thing. Repeating an answer doesn’t make it true.",
+          "strong": false
+        },
+        {
+          "label": "Notice how sure it sounds",
+          "result": "Very sure! AI can sound confident and still be wrong.",
+          "strong": false
+        }
+      ],
+      "verdict": "distrust",
+      "explain": "AI tools can repeat popular myths with total confidence. Use them as a starting point, then confirm with a source you can check.",
+      "skill": "Verifying information from AI tools"
+    },
+    {
+      "id": "using-ai-right",
+      "title": "Using AI the right way",
+      "kind": "choose",
+      "fib": {
+        "taunt": "Easy. Have the AI write the whole thing. Nobody will ever know!",
+        "neutral": "Think about the best plan."
+      },
+      "evidence": {
+        "type": "scenario",
+        "label": "The situation:",
+        "situation": "Your English class has a short essay due: “Write about a time you changed your mind.” Your teacher allows AI for brainstorming only.",
+        "question": "Which plan is the responsible one?"
+      },
+      "options": [
+        {
+          "text": "Have AI write the essay, then change a few words so it sounds like you.",
+          "right": false
+        },
+        {
+          "text": "Ask AI for a few questions to jog your memory, then pick your own story and write it yourself.",
+          "right": true
+        },
+        {
+          "text": "Find an essay online about changing your mind and use its main ideas.",
+          "right": false
+        },
+        {
+          "text": "Skip AI completely, because using it at all is cheating.",
+          "right": false
+        }
+      ],
+      "explain": "Responsible use means following your teacher’s rules and keeping the thinking yours. Brainstorm help is allowed here. Writing it for you is not, and avoiding a tool your teacher allowed isn’t required either.",
+      "skill": "Responsible use of AI in writing"
+    }
+  ]
+}

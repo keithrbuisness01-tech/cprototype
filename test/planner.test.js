@@ -29,17 +29,19 @@ async function setup({ env = {}, reply = okReply, now } = {}) {
   const app = await startApp({ env: Object.assign({ ANTHROPIC_API_KEY: 'test-key' }, env), anthropicClient: claude, now });
   const { cookie } = await app.signIn('google', googleTeacher('teacher@school.org'));
   const cls = (await (await app.api('/api/teacher/classes', { cookie, method: 'POST', body: { label: 'Ms Rivera period 3' } })).json()).class;
+  const send = (caseSetId, event) => fetch(app.base + '/api/events', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ classCode: cls.code, caseSetId, event }),
+  });
   const play = async () => {
-    for (const [caseIndex, correct] of [[0, false], [1, true], [2, false]]) {
-      await fetch(app.base + '/api/events', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ classCode: cls.code, caseSetId: 'grade6-core', event: { type: 'case', caseIndex, correct, picks: ['A', 'C', 'D'] } }),
-      });
+    for (const [caseIndex, guess] of [[0, 'ai'], [1, 'person'], [2, 'ai']]) {
+      const res = await send('grade6-core', { type: 'case', caseIndex, position: caseIndex, picks: ['A', 'C', 'D'], guess });
+      assert.equal(res.status, 200);
     }
   };
-  const plan = () => app.api('/api/teacher/classes/' + cls.id + '/plan', { cookie, method: 'POST', body: {} });
-  return { app, claude, cookie, cls, play, plan };
+  const plan = (caseSetId = 'grade6-core') => app.api('/api/teacher/classes/' + cls.id + '/plan', { cookie, method: 'POST', body: { caseSetId } });
+  return { app, claude, cookie, cls, play, plan, send };
 }
 
 test('without an API key the planner is off', async () => {
@@ -76,10 +78,36 @@ test('Claude receives anonymous class totals and nothing about people', async ()
       assert.equal(sent.includes(secret), false, 'request must not contain ' + secret);
     }
     const json = JSON.parse(req.messages[0].content.match(/\{[\s\S]*\}/)[0]);
-    assert.deepEqual(Object.keys(json).sort(), ['averageScoreOutOf10', 'caseSet', 'cases', 'grade', 'percentRightFirstCases', 'percentRightLastCases', 'questions', 'studentsFinished', 'studentsStarted']);
+    assert.deepEqual(Object.keys(json).sort(), ['averageScore', 'caseFile', 'cases', 'grade', 'maxScore', 'percentRightFirstCases', 'percentRightLastCases', 'questions', 'rules', 'studentsFinished', 'studentsStarted']);
     assert.equal(json.grade, 6);
+    assert.equal(json.rules, 'detective');
+    assert.equal(json.caseFile, 'Classic ten case file');
     assert.deepEqual(Object.keys(json.cases[0]).sort(), ['answer', 'itemKind', 'lesson', 'number', 'percentRight', 'timesAnswered', 'title']);
     assert.deepEqual(Object.keys(json.questions[0]).sort(), ['letter', 'percentOfCasesSkipped', 'question', 'shareOfAllPicksPercent']);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test('a Fall 2026 plan gets check and warm-up totals, still nothing about people', async () => {
+  const s = await setup();
+  try {
+    const fall = require('../cases/fall-2026.json');
+    const c = fall.cases[0];
+    const strong = c.checks.findIndex((k) => k.strong);
+    assert.equal((await s.send('fall-2026', { type: 'case', caseIndex: 0, position: 0, checks: [strong], verdict: c.verdict })).status, 200);
+    assert.equal((await s.send('fall-2026', { type: 'finish', score: 4, pre: 1, post: 3 })).status, 200);
+    assert.equal((await s.plan('fall-2026')).status, 200);
+    const req = s.claude.calls[0];
+    const json = JSON.parse(req.messages[0].content.match(/\{[\s\S]*\}/)[0]);
+    assert.equal(json.rules, 'investigate');
+    assert.equal(json.grade, 'grades 6 to 8');
+    assert.deepEqual(json.warmUpAndWrapUp, { questions: 4, averageWarmUp: 1, averageWrapUp: 3, percentImproved: 100 });
+    assert.equal(json.percentOfOpenedChecksThatWereStrong, 100);
+    assert.equal(json.questions, undefined);
+    assert.deepEqual(Object.keys(json.cases[0]).sort(), ['answer', 'checks', 'itemKind', 'lesson', 'number', 'percentLuckyGuess', 'percentRight', 'percentSolvedWithStrongCheck', 'skill', 'timesAnswered', 'title']);
+    const sent = JSON.stringify(req);
+    for (const secret of ['teacher@school.org', 'Ms Rivera', s.cls.code, s.cls.id, 'test-key']) assert.equal(sent.includes(secret), false, secret);
   } finally {
     await s.app.close();
   }

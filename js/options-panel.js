@@ -16,6 +16,7 @@
   ];
   const SWITCHES = [
     { id: 'sound', name: 'Sound', note: 'Clicks, a chime and Fib\'s "wah-wah"' },
+    { id: 'taunts', name: 'Fib’s trash talk', note: 'Off swaps in neutral lines' },
     { id: 'reducedMotion', name: 'Reduced motion', note: 'Stops wobbles, spins and stamps' },
     { id: 'highContrast', name: 'High contrast', note: 'Black and white, thicker outlines' },
   ];

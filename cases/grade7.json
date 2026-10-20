@@ -1,0 +1,240 @@
+{
+  "id": "grade7",
+  "title": "Grade 7 case file",
+  "label": "Grade 7",
+  "blurb": "Clues that disagree",
+  "rules": "detective",
+  "grade": 7,
+  "cases": [
+    {
+      "id": "the-school-closure",
+      "title": "The school closure",
+      "grade": 7,
+      "item": {
+        "kind": "Screenshot",
+        "description": "A screenshot of a district notice saying school is closed Friday for a water leak, forwarded in a group chat."
+      },
+      "clues": {
+        "A": "A classmate forwarded it. Nobody knows who made it.",
+        "B": "The district website and official app say nothing about a closure.",
+        "C": "The logo looks right, but the date says Friday the 31st in a month with 30 days.",
+        "D": "It names no school building and no contact person.",
+        "E": "The classmate who made it admits he asked an AI app for “a school closure notice” as a joke.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "Screenshots are easy to fake. Go to the official source directly.",
+      "fib": {
+        "right": "Ugh. The 31st. I can’t count.",
+        "wrong": "Gotcha! Enjoy your Friday. At school."
+      }
+    },
+    {
+      "id": "the-flooded-street",
+      "title": "The flooded street",
+      "grade": 7,
+      "item": {
+        "kind": "Photo",
+        "description": "A flooded street, shared today with the caption “Our town right now!”"
+      },
+      "clues": {
+        "A": "A neighborhood page with lots of followers.",
+        "B": "A reverse image search finds the same photo in a news article from years ago, in another state.",
+        "C": "Nothing looks wrong. The water and reflections look natural.",
+        "D": "It doesn’t say which street.",
+        "E": "Asked which street, the page deletes the post.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "It’s a real photo with a false caption. A real photo can still tell a false story, so check when and where it was first posted.",
+      "fib": {
+        "right": "Fine. Real photo, wrong place and wrong year.",
+        "wrong": "Gotcha! A person took that photo. I just lied about where."
+      }
+    },
+    {
+      "id": "the-quitting-streamer",
+      "title": "The quitting streamer",
+      "grade": 7,
+      "item": {
+        "kind": "Audio clip",
+        "description": "Your favorite streamer, Skyla, seems to say she’s quitting forever."
+      },
+      "clues": {
+        "A": "An account called SkylaLeaks, not her official one.",
+        "B": "Her official channels posted next week’s stream schedule.",
+        "C": "The voice sounds exactly like her.",
+        "D": "It skips her usual sign-off and never mentions her dog, who’s on every stream.",
+        "E": "Fans ask her directly. She posts “That’s not me!”",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "Voices can be cloned. Check the person’s own official accounts.",
+      "fib": {
+        "right": "Ugh. She answered her fans.",
+        "wrong": "Gotcha! Cloned voice. Her real account said otherwise."
+      }
+    },
+    {
+      "id": "the-cell-diagram",
+      "title": "The cell diagram",
+      "grade": 7,
+      "item": {
+        "kind": "Worksheet",
+        "description": "A plant cell diagram with very smooth, bright, perfect shapes."
+      },
+      "clues": {
+        "A": "Your science teacher handed it out.",
+        "B": "The same diagram is in your textbook’s online resources.",
+        "C": "Every shape is perfectly smooth and brightly colored.",
+        "D": "The labels match your unit’s vocabulary words exactly.",
+        "E": "You ask. Your teacher shows you the textbook page it came from.",
+        "F": "A credit line at the bottom names the publisher’s illustrator."
+      },
+      "verdict": "person",
+      "lesson": "Smooth digital art isn’t automatically AI. Credits and sources tell you who made it.",
+      "fib": {
+        "right": "Bah. The credit line was right there.",
+        "wrong": "Ha! A human illustrator drew it. Smooth isn’t the same as AI."
+      }
+    },
+    {
+      "id": "the-glowing-sneakers",
+      "title": "The glowing sneakers",
+      "grade": 7,
+      "item": {
+        "kind": "Online store",
+        "description": "A store sells glow-in-the-dark sneakers with three perfect product photos."
+      },
+      "clues": {
+        "A": "A store you’ve never heard of that opened last month.",
+        "B": "The same photos appear on five other stores, all at different prices.",
+        "C": "In one photo, the laces go into the shoe and never come out.",
+        "D": "There are no customer photos, only perfect studio shots.",
+        "E": "You ask for a real photo. The store sends the same picture again.",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "AI photos can sell products that don’t exist. Look for real customer photos.",
+      "fib": {
+        "right": "Rats. The laces were a mess.",
+        "wrong": "Gotcha! Those shoes don’t exist."
+      }
+    },
+    {
+      "id": "the-bracelet-fundraiser",
+      "title": "The bracelet fundraiser",
+      "grade": 7,
+      "item": {
+        "kind": "News article",
+        "description": "A 7th grader raised money for the animal shelter by selling bracelets."
+      },
+      "clues": {
+        "A": "Your local newspaper’s website, with a named reporter.",
+        "B": "The animal shelter thanked her on its own page.",
+        "C": "The photo is a bit blurry and her hand is cut off at the edge.",
+        "D": "It names her school and the shelter, and quotes her mom.",
+        "E": "You email the reporter. She replies with the day she interviewed them.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Named people and places, confirmed by more than one source, are strong evidence.",
+      "fib": {
+        "right": "Hmph. The shelter backed her up.",
+        "wrong": "Ha! Real kid, real bracelets, real story."
+      }
+    },
+    {
+      "id": "the-essay-sources",
+      "title": "The essay sources",
+      "grade": 7,
+      "item": {
+        "kind": "Bibliography",
+        "description": "A classmate’s essay lists five sources, including The Secret Letters of the Mayflower by Dr. Helen Brooks."
+      },
+      "clues": {
+        "A": "Your classmate Sam’s essay.",
+        "B": "The library catalog and an online search find no such book.",
+        "C": "Every citation is perfectly formatted.",
+        "D": "Sam can’t say what any of the books looked like or where he found them.",
+        "E": "Asked to bring one in, Sam says he’ll “look for it.”",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "AI can invent sources that look real. Always check that a source exists.",
+      "fib": {
+        "right": "Ugh. You checked the library.",
+        "wrong": "Gotcha! That book doesn’t exist. I made it up."
+      }
+    },
+    {
+      "id": "the-dancing-robot",
+      "title": "The dancing robot",
+      "grade": 7,
+      "item": {
+        "kind": "Video",
+        "description": "A robot dog dances smoothly to music at a technology fair."
+      },
+      "clues": {
+        "A": "A local college’s engineering club posted it.",
+        "B": "The college news page has an article about the fair with photos of the same robot.",
+        "C": "The movement looks too smooth to be real.",
+        "D": "The club names the students who programmed the dance and the song they used.",
+        "E": "You ask how long it took. A student says three weeks and shares a clip of it falling over.",
+        "F": "No label."
+      },
+      "verdict": "person",
+      "lesson": "Real technology can look unreal. Bloopers and behind-the-scenes clips are hard to fake.",
+      "fib": {
+        "right": "Fine. The blooper gave it away.",
+        "wrong": "Ha! Real robot. You thought the robot was the trick."
+      }
+    },
+    {
+      "id": "the-castle-painting",
+      "title": "The castle painting",
+      "grade": 7,
+      "item": {
+        "kind": "Digital art",
+        "description": "Kai, an online friend, shares a detailed castle painting and says “drew this in an hour!”"
+      },
+      "clues": {
+        "A": "Kai, a friend you’ve never met in person.",
+        "B": "A search finds the same image on an AI art page, posted a week earlier.",
+        "C": "Some castle windows melt into each other.",
+        "D": "Kai has no sketches or older art to show.",
+        "E": "You ask which brush he used. Kai says “the normal one.”",
+        "F": "No label."
+      },
+      "verdict": "ai",
+      "lesson": "Ask to see the process. Real artists usually have sketches, layers or older work.",
+      "fib": {
+        "right": "Bah. Those melting windows.",
+        "wrong": "Gotcha! Kai didn’t draw it. No person did."
+      }
+    },
+    {
+      "id": "the-storm-warning",
+      "title": "The storm warning",
+      "grade": 7,
+      "item": {
+        "kind": "Phone alert",
+        "description": "An urgent weather warning appears on your parent’s phone in capital letters."
+      },
+      "clues": {
+        "A": "It arrived as an official emergency alert from the weather service.",
+        "B": "The local TV station and the city website post the same warning.",
+        "C": "The capital letters and urgent wording feel like a scam.",
+        "D": "It names your county and specific times.",
+        "E": "Your parent calls 311. They confirm the warning.",
+        "F": "It’s marked as an official emergency alert."
+      },
+      "verdict": "person",
+      "lesson": "Urgent doesn’t mean fake. Official channels that agree with each other can be trusted.",
+      "fib": {
+        "right": "Hmph. Too official for me.",
+        "wrong": "Ha! It was real. Scary doesn’t mean fake."
+      }
+    }
+  ]
+}

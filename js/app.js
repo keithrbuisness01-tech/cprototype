@@ -1,6 +1,6 @@
 // Student screens. Rules live in game.js, server traffic in store.js, Fib in
-// fib.js. Students never type anything except a class code, and nothing about
-// them is stored or sent: see store.js.
+// fib.js, evidence drawing in evidence.js. Students never type anything except
+// a class code, and nothing about them is stored or sent: see store.js.
 (function () {
   const { QUESTIONS } = window.AIDetectiveCaseData;
   const Game = window.AIDetectiveGame;
@@ -8,20 +8,29 @@
   const Options = window.AIDetectiveOptions;
   const Sound = window.AIDetectiveSound;
   const Fib = window.AIDetectiveFib;
+  const Evidence = window.AIDetectiveEvidence;
   const { el, ask } = window.AIDetectiveUI;
 
   const $ = (id) => document.getElementById(id);
-  const screens = ['home', 'howto', 'case', 'end'];
+  const screens = ['home', 'howto', 'quiz', 'case', 'inv', 'end', 'finish'];
 
-  let caseSet = null;
+  let sets = []; // case files this student may play
+  let fixedSetId = null; // set by the teacher: no picker
+  let chosenId = null;
+  let set = null; // the case file being played
   let run = null;
+  let quiz = null; // { phase: 'pre' | 'post', answers: [], pre }
+  const quizDone = new Set(); // case files whose warm-up and wrap-up ran this visit
+  let checkOrder = []; // shuffled display order of the four checks
   let panel = null;
+
+  const taunts = () => Options.get().taunts;
 
   // ---- Navigation ------------------------------------------------------------
 
   function show(name) {
     for (const s of screens) $('screen-' + s).hidden = s !== name;
-    $('scoreboard').hidden = !(name === 'case' || name === 'end');
+    $('scoreboard').hidden = !['case', 'inv', 'end', 'finish'].includes(name);
     window.scrollTo(0, 0);
     const heading = $('screen-' + name).querySelector('h1, h2');
     if (heading) {
@@ -34,19 +43,23 @@
     if (run && !Game.isOver(run) && run.results.length > 0 &&
         !(await ask('Leave this game? Your score so far will be lost.', 'Leave game'))) return false;
     run = null;
+    quiz = null;
     return true;
   }
 
   document.addEventListener('click', async (e) => {
-    const target = e.target.closest('[data-go="home"]');
-    if (target && (await leaveGame())) show('home');
+    if (e.target.closest('[data-go="home"]') && (await leaveGame())) showHome();
+    if (e.target.closest('[data-choose]')) showHome();
+    if (e.target.closest('[data-again]')) startRun(true);
   });
 
   function scrollToNode(node, block) {
     node.scrollIntoView({ behavior: Options.get().reducedMotion ? 'auto' : 'smooth', block });
   }
 
-  // ---- Joining a class ---------------------------------------------------------
+  const progressText = (position) => set.label + ': case ' + (position + 1) + ' of ' + set.cases.length;
+
+  // ---- Start screen: joining and choosing a case file ---------------------------
 
   const JOIN_ERRORS = {
     missing: "That code doesn't match a class. Check it with your teacher.",
@@ -55,22 +68,64 @@
     network: "Couldn't reach the classroom server. Check the connection and try again.",
   };
 
-  function useCaseSet(set, settings) {
-    caseSet = set;
+  function useSets(list, defaultId, settings) {
+    sets = list;
+    fixedSetId = settings && settings.caseSetId ? settings.caseSetId : null;
     window.AIDetectiveClass = { soundMuted: Boolean(settings && settings.soundMuted) };
     if (panel) panel.lockSound(window.AIDetectiveClass.soundMuted);
-    $('case-count').textContent = set.cases.length;
-    $('ranks-line').innerHTML = '';
-    for (const band of Game.rankBands(set.cases.length)) {
-      $('ranks-line').appendChild(el('span', null, band.from + '–' + band.to + ' ' + band.name));
-    }
+    if (!sets.some((s) => s.id === chosenId)) chosenId = fixedSetId || defaultId || sets[0].id;
+    renderPicker();
     $('start-btn').disabled = false;
   }
 
+  function setFacts(s) {
+    return s.rules === 'investigate'
+      ? [s.cases.length + ' cases', '4 checks each', '1 rival']
+      : [s.cases.length + ' cases', '6 questions', '1 rival'];
+  }
+
+  function renderPicker() {
+    const fixed = fixedSetId && sets.find((s) => s.id === fixedSetId);
+    $('picker-block').hidden = Boolean(fixed);
+    $('fixed-set').hidden = !fixed;
+    if (fixed) $('fixed-set').textContent = 'Your teacher picked the case file: ' + fixed.label + ' · ' + fixed.blurb;
+    const picker = $('picker');
+    picker.innerHTML = '';
+    for (const s of sets) {
+      const b = el('button', 'set-btn');
+      b.type = 'button';
+      b.dataset.set = s.id;
+      b.setAttribute('aria-pressed', String(s.id === chosenId));
+      b.append(el('b', null, s.label), el('span', null, s.blurb));
+      b.addEventListener('click', () => {
+        chosenId = s.id;
+        renderPicker();
+      });
+      picker.appendChild(b);
+    }
+    const chosen = sets.find((s) => s.id === chosenId);
+    if (!chosen) return;
+    const facts = setFacts(chosen);
+    $('kicker').innerHTML = '';
+    facts.forEach((f, i) => {
+      if (i) $('kicker').append(' ', el('span', null, '/'), ' ');
+      $('kicker').append(f);
+    });
+    $('kicker').querySelectorAll('span').forEach((sp) => sp.setAttribute('aria-hidden', 'true'));
+    $('lead').textContent = chosen.rules === 'investigate'
+      ? 'How would you check? Run two of four checks on each case, then decide whether to trust it. You score by checking well, not by guessing.'
+      : 'Read each case. Ask three of the six detective questions. Then decide: made by a person, or made by AI?';
+    $('pack-note').hidden = !chosen.pack;
+    if (chosen.pack) $('pack-note').textContent = 'Case pack: ' + chosen.pack + '. ' + (chosen.packNote || '');
+  }
+
   function showJoinForm(message) {
-    caseSet = null;
+    sets = [];
     $('join').hidden = false;
     $('joined').hidden = true;
+    $('picker-block').hidden = true;
+    $('fixed-set').hidden = true;
+    $('pack-note').hidden = true;
     $('start-btn').disabled = true;
     $('join-error').hidden = !message;
     $('join-error').textContent = message || '';
@@ -84,10 +139,10 @@
       showJoinForm(JOIN_ERRORS[result.error]);
       return;
     }
-    useCaseSet(result.caseSet, result.settings);
     $('join').hidden = true;
     $('joined').hidden = false;
-    $('joined-detail').textContent = 'Grade ' + result.caseSet.grade + ' · ' + result.caseSet.cases.length + ' cases';
+    $('joined-detail').textContent = result.settings.caseSetId ? 'Your teacher picked the case file' : 'Choose a case file below';
+    useSets(result.caseSets, result.defaultSetId, result.settings);
   }
 
   // Only letters and numbers from the code alphabet can be typed.
@@ -108,27 +163,115 @@
     $('class-code').focus();
   });
 
-  // ---- A run -----------------------------------------------------------------
+  function showHome() {
+    run = null;
+    quiz = null;
+    renderPicker();
+    show('home');
+  }
 
-  const cases = () => caseSet.cases;
+  // ---- Starting a run ------------------------------------------------------------
 
-  function startRun() {
-    if (!caseSet) return;
-    run = Game.newRun(cases().length);
-    Store.send({ type: 'start' });
+  function updateScore() {
+    $('score-you').textContent = run ? run.you : 0;
+    $('score-fib').textContent = run ? run.fib : 0;
+  }
+
+  // First play of a case file uses the file's order; "Play again" shuffles.
+  function startRun(shuffled) {
+    set = sets.find((s) => s.id === chosenId);
+    if (!set) return;
+    run = Game.newRun(set, { shuffled });
+    Store.send(set.id, { type: 'start' });
     updateScore();
+    if (shuffled) {
+      quiz = null;
+      firstCase();
+      return;
+    }
+    $('howto-detective').hidden = set.rules !== 'detective';
+    $('howto-investigate').hidden = set.rules !== 'investigate';
+    if (set.rules === 'detective') {
+      $('ranks-line').innerHTML = '';
+      for (const band of Game.rankBands(set.cases.length)) $('ranks-line').appendChild(el('span', null, band.from + '–' + band.to + ' ' + band.name));
+    }
     show('howto');
   }
 
-  function updateScore() {
-    const s = run ? Game.scores(run) : { player: 0, fib: 0 };
-    $('score-you').textContent = s.player;
-    $('score-fib').textContent = s.fib;
+  function firstCase() {
+    if (set.rules === 'detective') renderCase();
+    else renderInvestigate();
   }
 
+  $('start-btn').addEventListener('click', () => startRun(false));
+  $('howto-go').addEventListener('click', () => {
+    // The warm-up runs once per case file per visit, before the first play.
+    if (set.rules === 'investigate' && !quizDone.has(set.id)) startQuiz('pre');
+    else firstCase();
+  });
+
+  // ---- Warm-up and wrap-up ---------------------------------------------------------
+
+  function startQuiz(phase) {
+    quiz = { phase, answers: Array(set.checkQuiz.length).fill(null), pre: quiz ? quiz.pre : null };
+    const pre = phase === 'pre';
+    $('quiz-step').textContent = pre ? 'Before the cases' : 'After the cases';
+    $('quiz-title').textContent = pre ? 'Warm-up' : 'Wrap-up';
+    $('quiz-intro').textContent = pre
+      ? set.checkQuiz.length + ' quick questions before the cases. Just answer what you think right now.'
+      : 'The same ' + set.checkQuiz.length + ' questions again. See what changed.';
+    $('quiz-go').textContent = pre ? 'Start the cases' : 'See my results';
+    $('quiz-error').hidden = true;
+    const list = $('quiz');
+    list.innerHTML = '';
+    set.checkQuiz.forEach((q, qi) => {
+      const li = el('li', 'quiz-q');
+      const legend = el('p', 'quiz-question', q.question);
+      legend.id = 'quiz-q-' + qi;
+      const group = el('div', 'quiz-options');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-labelledby', legend.id);
+      q.options.forEach((option, oi) => {
+        const b = el('button', 'quiz-option', option);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () => {
+          quiz.answers[qi] = oi;
+          for (const other of group.children) other.setAttribute('aria-pressed', String(other === b));
+        });
+        group.appendChild(b);
+      });
+      li.append(legend, group);
+      list.appendChild(li);
+    });
+    show('quiz');
+  }
+
+  $('quiz-go').addEventListener('click', () => {
+    if (quiz.answers.some((a) => a === null)) {
+      $('quiz-error').hidden = false;
+      $('quiz-error').textContent = 'Answer all ' + set.checkQuiz.length + ' questions to continue.';
+      return;
+    }
+    const score = quiz.answers.filter((a, i) => a === set.checkQuiz[i].answer).length;
+    if (quiz.phase === 'pre') {
+      quiz.pre = score;
+      firstCase();
+    } else {
+      quiz.post = score;
+      quizDone.add(set.id);
+      finishInvestigate();
+    }
+  });
+
+  // ---- Person or AI cases ----------------------------------------------------------
+
+  const cases = () => set.cases;
+  const currentCase = () => cases()[run.order[run.index]];
+
   function renderCase() {
-    const c = cases()[run.index];
-    $('case-tag').textContent = 'Case ' + (run.index + 1) + ' of ' + cases().length;
+    const c = currentCase();
+    $('case-tag').textContent = progressText(run.index);
     $('case-kind').textContent = c.item.kind;
     $('case-title').textContent = c.title;
     $('case-setup').textContent = c.item.description;
@@ -151,7 +294,7 @@
 
     $('verdict').hidden = true;
     $('reveal').hidden = true;
-    for (const b of document.querySelectorAll('.verdict-btn')) b.disabled = false;
+    for (const b of document.querySelectorAll('#screen-case .verdict-btn')) b.disabled = false;
     updatePickState();
     show('case');
   }
@@ -164,7 +307,7 @@
       const btn = li.querySelector('button');
       li.classList.toggle('picked', picked);
       li.classList.toggle('unpicked', !picked && left === 0);
-      btn.disabled = picked || left === 0 || run.guess !== null;
+      btn.disabled = picked || left === 0 || run.done;
       btn.setAttribute('aria-pressed', String(picked));
     }
   }
@@ -173,7 +316,7 @@
   function onPick(id) {
     if (!Game.pick(run, id)) return;
     const clue = $('questions').querySelector('[data-id="' + id + '"] .clue');
-    clue.textContent = cases()[run.index].clues[id];
+    clue.textContent = currentCase().clues[id];
     clue.hidden = false;
     Sound.play('clue');
     updatePickState();
@@ -184,13 +327,13 @@
   }
 
   function onGuess(value) {
-    const c = cases()[run.index];
+    const c = currentCase();
     const result = Game.guess(run, c.verdict, value);
     if (!result) return;
-    for (const b of document.querySelectorAll('.verdict-btn')) b.disabled = true;
+    for (const b of document.querySelectorAll('#screen-case .verdict-btn')) b.disabled = true;
     updatePickState();
     updateScore();
-    Store.send({ type: 'case', caseIndex: result.index, correct: result.correct, picks: result.picks });
+    Store.send(set.id, Game.caseEvent(run, result));
 
     const banner = $('result-banner');
     banner.className = 'result-banner ' + (result.correct ? 'right' : 'wrong');
@@ -201,8 +344,10 @@
       el('span', 'stamp-note', result.correct ? 'Point to the Detective.' : 'Point to Fib.')
     );
     Fib.set($('reveal-fib'), result.correct ? 'caught' : 'smug');
-    $('reveal-speech').textContent = result.correct ? c.fib.right : c.fib.wrong;
-    $('reveal-verdict').textContent = c.verdictNote;
+    $('reveal-speech').textContent = taunts()
+      ? (result.correct ? c.fib.right : c.fib.wrong)
+      : (result.correct ? Game.DETECTIVE_NEUTRAL.right : Game.DETECTIVE_NEUTRAL.wrong);
+    $('reveal-verdict').textContent = c.verdictNote || (c.verdict === 'ai' ? 'AI.' : 'Person.');
     $('reveal-lesson').textContent = c.lesson;
 
     const others = $('other-clues');
@@ -221,23 +366,25 @@
     scrollToNode($('reveal'), 'start');
   }
 
-  function onNext() {
+  $('next-btn').addEventListener('click', () => {
     Game.next(run);
-    if (Game.isOver(run)) finishRun();
+    if (Game.isOver(run)) finishDetective();
     else renderCase();
+  });
+  for (const b of document.querySelectorAll('#screen-case .verdict-btn')) {
+    b.addEventListener('click', () => onGuess(b.dataset.guess));
   }
 
-  // The session ends here: no replay loop, streaks or rewards.
-  function finishRun() {
+  function finishDetective() {
     const s = Game.scores(run);
     const rank = Game.rankFor(s.player, cases().length);
-    Store.send({ type: 'finish', score: s.player });
+    Store.send(set.id, { type: 'finish', score: s.player });
     $('progress-fill').style.width = '100%';
     $('end-score').textContent = s.player;
     $('end-total').textContent = cases().length;
     $('end-rank').textContent = rank.name;
     Fib.set($('end-fib'), rank.pose);
-    $('end-speech').textContent = rank.fib;
+    $('end-speech').textContent = taunts() ? rank.fib : rank.neutral;
 
     const recap = $('recap');
     recap.innerHTML = '';
@@ -251,15 +398,172 @@
       li.append(mark, body);
       recap.appendChild(li);
     }
+    endButtons($('screen-end'));
     run = null;
     show('end');
   }
 
-  $('start-btn').addEventListener('click', startRun);
-  $('howto-go').addEventListener('click', renderCase);
-  $('next-btn').addEventListener('click', onNext);
-  for (const b of document.querySelectorAll('.verdict-btn')) {
-    b.addEventListener('click', () => onGuess(b.dataset.guess));
+  // "Choose another case file" only when the student may choose.
+  function endButtons(screen) {
+    screen.querySelector('[data-choose]').hidden = Boolean(fixedSetId);
+  }
+
+  // ---- "How would you check?" cases ----------------------------------------------
+
+  function renderInvestigate() {
+    const c = currentCase();
+    $('inv-tag').textContent = progressText(run.index);
+    $('inv-title').textContent = c.title;
+    $('inv-progress').style.width = (run.index / cases().length) * 100 + '%';
+    const ev = $('inv-evidence');
+    ev.innerHTML = '';
+    ev.appendChild(Evidence.render(c.evidence));
+    Fib.set($('inv-fib'), 'scheming');
+    $('inv-speech').textContent = taunts() ? c.fib.taunt : c.fib.neutral;
+    $('inv-result').hidden = true;
+
+    const investigate = c.kind === 'investigate';
+    $('inv-checks-block').hidden = !investigate;
+    $('inv-options-block').hidden = investigate;
+    if (investigate) {
+      // A new order each time, so the strong checks aren't always on top.
+      checkOrder = Game.shuffle(c.checks.map((_, i) => i));
+      renderChecks();
+      for (const b of document.querySelectorAll('#inv-checks-block .verdict-btn')) b.disabled = false;
+    } else {
+      const list = $('inv-options');
+      list.innerHTML = '';
+      c.options.forEach((option, i) => {
+        const li = el('li');
+        const b = el('button', 'plan-btn', option.text);
+        b.type = 'button';
+        b.dataset.option = i;
+        b.addEventListener('click', () => onChoose(i));
+        li.appendChild(b);
+        list.appendChild(li);
+      });
+    }
+    show('inv');
+  }
+
+  function renderChecks() {
+    const c = currentCase();
+    const left = Game.CHECKS_ALLOWED - run.opened.length;
+    $('inv-count').textContent = run.done ? 'Done' : left > 0 ? 'Time for ' + left + (left === 1 ? ' more check' : ' checks') : 'No more checks';
+    const list = $('inv-checks');
+    list.innerHTML = '';
+    for (const i of checkOrder) {
+      const check = c.checks[i];
+      const opened = run.opened.includes(i);
+      const li = el('li', 'check' + (opened ? ' opened' : ''));
+      const b = el('button', 'check-btn', check.label);
+      b.type = 'button';
+      b.disabled = opened || left <= 0 || run.done;
+      b.setAttribute('aria-pressed', String(opened));
+      b.addEventListener('click', () => {
+        if (!Game.openCheck(run, i)) return;
+        Sound.play('clue');
+        renderChecks();
+      });
+      li.appendChild(b);
+      if (opened) li.appendChild(el('p', 'check-result', check.result));
+      // Every check's label shows once it's opened, and all show after the verdict.
+      if (opened || run.done) {
+        li.appendChild(el('span', 'check-tag ' + (check.strong ? 'strong' : 'weak'), check.strong ? 'Strong check' : 'Weak check'));
+      }
+      list.appendChild(li);
+    }
+  }
+
+  function showResult(result, c) {
+    const o = Game.OUTCOMES[result.outcome];
+    const good = result.outcome === 'solved' || result.outcome === 'good';
+    const banner = $('inv-banner');
+    banner.className = 'result-banner ' + (good ? 'right' : result.outcome === 'lucky' ? 'lucky' : 'wrong');
+    banner.innerHTML = '';
+    banner.append(el('span', 'stamp', o.head(result.you)));
+    $('inv-detail').textContent = o.detail(result.strong);
+    $('inv-explain').textContent = c.explain;
+    $('inv-skill').textContent = c.skill;
+    Fib.set($('inv-fib'), o.pose);
+    $('inv-speech').textContent = taunts() ? o.taunt : o.neutral;
+    Sound.play(good ? 'right' : 'wrong');
+    updateScore();
+    Store.send(set.id, Game.caseEvent(run, result));
+    $('inv-next').textContent = run.index + 1 >= cases().length ? (quiz && quiz.phase === 'pre' ? 'Go to the wrap-up' : 'See the results') : 'Next case';
+    $('inv-result').hidden = false;
+    scrollToNode($('inv-result'), 'start');
+  }
+
+  for (const b of document.querySelectorAll('#inv-checks-block .verdict-btn')) {
+    b.addEventListener('click', () => {
+      const c = currentCase();
+      const result = Game.judge(run, c, b.dataset.verdict);
+      if (!result) return;
+      for (const v of document.querySelectorAll('#inv-checks-block .verdict-btn')) v.disabled = true;
+      renderChecks();
+      showResult(result, c);
+    });
+  }
+
+  function onChoose(i) {
+    const c = currentCase();
+    const result = Game.choose(run, c, i);
+    if (!result) return;
+    for (const b of $('inv-options').querySelectorAll('button')) {
+      b.disabled = true;
+      const option = c.options[Number(b.dataset.option)];
+      if (option.right) b.classList.add('right');
+      else if (Number(b.dataset.option) === i) b.classList.add('wrong');
+    }
+    showResult(result, c);
+  }
+
+  $('inv-next').addEventListener('click', () => {
+    Game.next(run);
+    if (!Game.isOver(run)) renderInvestigate();
+    else if (quiz && quiz.phase === 'pre') startQuiz('post');
+    else finishInvestigate();
+  });
+
+  function finishInvestigate() {
+    const s = Game.scores(run);
+    const won = s.player > s.fib;
+    const f = won ? Game.FINISH.won : Game.FINISH.lost;
+    const withQuiz = quiz && quiz.post !== undefined;
+    const event = { type: 'finish', score: s.player };
+    if (withQuiz) Object.assign(event, { pre: quiz.pre, post: quiz.post });
+    Store.send(set.id, event);
+
+    $('finish-pack').textContent = set.pack ? 'Case pack: ' + set.pack : set.label;
+    $('finish-title').textContent = f.heading;
+    $('finish-score').textContent = 'You ' + s.player + ', Fib ' + s.fib;
+    Fib.set($('finish-fib'), f.pose);
+    $('finish-speech').textContent = taunts() ? f.taunt : f.neutral;
+    const cards = $('finish-cards');
+    cards.innerHTML = '';
+    const card = (big, label) => {
+      const d = el('div', 'scorecard');
+      d.append(el('span', 'big', big), el('span', null, label));
+      cards.appendChild(d);
+    };
+    if (withQuiz) {
+      const len = set.checkQuiz.length;
+      const diff = quiz.post - quiz.pre;
+      card(quiz.pre + '/' + len, 'Warm-up');
+      card(quiz.post + '/' + len, 'Wrap-up');
+      card((diff > 0 ? '+' : '') + diff, 'Change');
+    } else {
+      card(s.player + '/' + Game.maxPoints(set), 'Your points');
+      card(String(s.fib), 'Fib’s points');
+    }
+    const talk = $('finish-talk');
+    talk.innerHTML = '';
+    for (const q of set.discussion) talk.appendChild(el('li', null, q));
+    endButtons($('screen-finish'));
+    run = null;
+    quiz = null;
+    show('finish');
   }
 
   // ---- Options panel -----------------------------------------------------------
@@ -287,7 +591,8 @@
     if (mode === 'demo') {
       $('demo-note').hidden = false;
       try {
-        useCaseSet(await Store.demoCaseSet(), null);
+        const demo = await Store.demoCaseSets();
+        useSets(demo.caseSets, demo.defaultSetId, null);
       } catch (e) {
         $('demo-note').textContent = "This demo couldn't load its cases. Open it through the classroom server instead.";
       }

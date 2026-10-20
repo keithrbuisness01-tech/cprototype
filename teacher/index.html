@@ -56,12 +56,33 @@
       <div class="report-head">
         <h2 id="report-title">Class report</h2>
         <div class="report-actions">
+          <label class="visually-hidden" for="report-set">Case file</label>
+          <select id="report-set"></select>
           <button class="btn ghost small" type="button" id="report-refresh">Refresh</button>
+          <button class="btn ghost small" type="button" id="copy-summary">Copy summary</button>
           <a class="btn ghost small" id="open-summary" target="_blank" rel="noopener">Open results summary</a>
         </div>
       </div>
-      <p class="report-mode">Anonymous totals for this class. No student names or individual scores are collected.</p>
+      <p class="report-mode">Anonymous totals for this class, kept per case file. No student names or individual scores are collected.</p>
+      <p class="copy-note" id="summary-note" aria-live="polite"></p>
       <div id="report-body"></div>
+    </section>
+
+    <section class="teaching" id="teaching" hidden aria-labelledby="teaching-title">
+      <h2 id="teaching-title">Teaching this case pack</h2>
+      <div class="tabs" role="tablist" aria-label="Teaching">
+        <button type="button" role="tab" id="tab-guide" aria-controls="panel-guide" aria-selected="true">Lesson guide</button>
+        <button type="button" role="tab" id="tab-standards" aria-controls="panel-standards" aria-selected="false">Standards</button>
+      </div>
+      <div role="tabpanel" id="panel-guide" aria-labelledby="tab-guide"></div>
+      <div role="tabpanel" id="panel-standards" aria-labelledby="tab-standards" hidden>
+        <div class="opt-row">
+          <label for="standards-grade">Grade level</label>
+          <select id="standards-grade"><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option></select>
+        </div>
+        <div class="table-wrap"><table class="standards-table" id="standards-table"></table></div>
+        <p class="report-mode" id="standards-note"></p>
+      </div>
     </section>
 
     <section class="planner" id="planner" hidden aria-labelledby="planner-title">

@@ -1,6 +1,9 @@
 {
   "id": "grade6-core",
-  "title": "Grade 6 core cases",
+  "title": "Classic ten case file",
+  "label": "Classic ten",
+  "blurb": "The first ten, made harder",
+  "rules": "detective",
   "grade": 6,
   "cases": [
     {

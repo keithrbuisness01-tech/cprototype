@@ -26,9 +26,9 @@
     <section class="screen" id="screen-home" aria-labelledby="home-title">
       <div class="hero">
         <div class="hero-copy">
-          <p class="kicker"><span id="case-count">10</span> cases <span aria-hidden="true">/</span> 6 questions <span aria-hidden="true">/</span> 1 rival</p>
+          <p class="kicker" id="kicker">Cases <span aria-hidden="true">/</span> checks <span aria-hidden="true">/</span> 1 rival</p>
           <h1 id="home-title"><span class="t-ai">AI</span> <span class="t-det">Detective</span></h1>
-          <p class="lead">Read each case. Ask three of the six detective questions. Then decide: made by a person, or made by AI?</p>
+          <p class="lead" id="lead">Investigate before you decide. Choose a case file to begin.</p>
 
           <!-- Joining a class (classroom server only). -->
           <form class="join" id="join" hidden>
@@ -45,6 +45,14 @@
             <button class="text-link" type="button" id="change-class">Use a different code</button>
           </div>
           <p class="demo-note" id="demo-note" hidden><strong>Demo.</strong> Nothing you do here is sent anywhere.</p>
+
+          <!-- Choosing a case file. Hidden when the teacher picked one. -->
+          <div class="picker" id="picker-block" hidden>
+            <h2 class="picker-title" id="picker-title">Choose your case file</h2>
+            <div class="sets" id="picker" role="group" aria-labelledby="picker-title"></div>
+          </div>
+          <p class="fixed-set" id="fixed-set" hidden></p>
+          <p class="pack-note" id="pack-note" hidden></p>
 
           <div class="actions">
             <button class="btn primary big" type="button" id="start-btn" disabled>Open the first case</button>
@@ -64,14 +72,25 @@
     <!-- How to play -->
     <section class="screen" id="screen-howto" aria-labelledby="howto-title" hidden>
       <h2 id="howto-title">How a case works</h2>
-      <ol class="steps">
-        <li><strong>Read the case file.</strong> Something someone saw, heard or was sent.</li>
-        <li><strong>Pick three of the six detective questions.</strong> Each one reveals a clue. Some clues help, some don't, and some are meant to mislead you.</li>
-        <li><strong>Give your verdict:</strong> made by a person, or made by AI.</li>
-        <li><strong>Fib reveals the answer</strong> and you get the lesson.</li>
-      </ol>
-      <p>The Detective scores a point for every right verdict. Fib scores one for every wrong one.</p>
-      <p class="ranks-line" id="ranks-line"></p>
+      <div id="howto-detective">
+        <ol class="steps">
+          <li><strong>Read the case file.</strong> Something someone saw, heard or was sent.</li>
+          <li><strong>Pick three of the six detective questions.</strong> Each one reveals a clue. Some clues help, some don't, and some are meant to mislead you.</li>
+          <li><strong>Give your verdict:</strong> made by a person, or made by AI.</li>
+          <li><strong>Fib reveals the answer</strong> and you get the lesson.</li>
+        </ol>
+        <p>The Detective scores a point for every right verdict. Fib scores one for every wrong one.</p>
+        <p class="ranks-line" id="ranks-line"></p>
+      </div>
+      <div id="howto-investigate" hidden>
+        <ol class="steps">
+          <li><strong>Look at the evidence.</strong> A post, a quote, a web page, a chat.</li>
+          <li><strong>Run two of the four checks.</strong> After you open one, you'll see if it was a strong check or a weak one.</li>
+          <li><strong>Decide:</strong> trust it, or don't trust it.</li>
+          <li><strong>Score by checking well, not by guessing.</strong> A right call backed by strong checks earns 2 points plus 1 for each strong check. A right call with no strong check is a lucky guess: 1 point to you, 1 to Fib. A wrong call gives Fib 2.</li>
+        </ol>
+        <p>Before the cases there's a four-question warm-up, and the same four questions come back at the end.</p>
+      </div>
       <div class="actions">
         <button class="btn primary big" type="button" id="howto-go">Let's go</button>
       </div>
@@ -119,6 +138,81 @@
       </div>
     </section>
 
+    <!-- Warm-up and wrap-up -->
+    <section class="screen" id="screen-quiz" aria-labelledby="quiz-title" hidden>
+      <p class="eyebrow" id="quiz-step">Warm-up</p>
+      <h2 id="quiz-title">Warm-up</h2>
+      <p id="quiz-intro"></p>
+      <ol class="quiz" id="quiz"></ol>
+      <p class="join-error" id="quiz-error" role="alert" hidden>Answer all four questions to continue.</p>
+      <div class="actions">
+        <button class="btn primary big" type="button" id="quiz-go">Start the cases</button>
+      </div>
+    </section>
+
+    <!-- A "How would you check?" case -->
+    <section class="screen" id="screen-inv" aria-labelledby="inv-title" hidden>
+      <div class="progress" aria-hidden="true"><div class="progress-fill" id="inv-progress"></div></div>
+      <div class="inv-stage">
+        <article class="case-file inv-evidence">
+          <p class="case-tag" id="inv-tag">Case 1 of 6</p>
+          <h2 id="inv-title">Case</h2>
+          <div id="inv-evidence"></div>
+        </article>
+        <section class="inv-side" aria-label="Your investigation">
+          <div class="fib-line">
+            <div class="fib-avatar" id="inv-fib"></div>
+            <blockquote class="speech" id="inv-speech"></blockquote>
+          </div>
+          <div id="inv-checks-block">
+            <div class="picks-head">
+              <h3>Run your checks</h3>
+              <p class="pick-count" id="inv-count" aria-live="polite"></p>
+            </div>
+            <ul class="checks" id="inv-checks"></ul>
+            <h3 class="inv-verdict-head">Your verdict</h3>
+            <div class="verdict-buttons">
+              <button class="btn verdict-btn trust" type="button" data-verdict="trust">Trust it</button>
+              <button class="btn verdict-btn distrust" type="button" data-verdict="distrust">Don’t trust it</button>
+            </div>
+          </div>
+          <div id="inv-options-block" hidden>
+            <h3>Pick a plan</h3>
+            <ul class="plans" id="inv-options"></ul>
+          </div>
+          <div class="reveal" id="inv-result" hidden aria-live="polite">
+            <div class="result-banner" id="inv-banner"></div>
+            <p class="answer" id="inv-detail"></p>
+            <p class="lesson"><strong>Why:</strong> <span id="inv-explain"></span></p>
+            <p class="skill-line"><strong>Skill:</strong> <span id="inv-skill"></span></p>
+            <div class="actions">
+              <button class="btn primary big" type="button" id="inv-next">Next case</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- End of a "How would you check?" run -->
+    <section class="screen" id="screen-finish" aria-labelledby="finish-title" hidden>
+      <div class="end-head">
+        <p class="eyebrow" id="finish-pack">Case closed</p>
+        <h2 id="finish-title">Case closed. You win!</h2>
+        <p class="finish-score" id="finish-score"></p>
+      </div>
+      <div class="fib-line">
+        <div class="fib-avatar" id="finish-fib"></div>
+        <blockquote class="speech" id="finish-speech"></blockquote>
+      </div>
+      <div class="scorecards" id="finish-cards"></div>
+      <h3>Talk about it with your class</h3>
+      <ol class="talk" id="finish-talk"></ol>
+      <div class="actions">
+        <button class="btn primary" type="button" data-again>Play again</button>
+        <button class="btn ghost" type="button" data-choose>Choose another case file</button>
+      </div>
+    </section>
+
     <!-- End of the session -->
     <section class="screen" id="screen-end" aria-labelledby="end-title" hidden>
       <div class="end-head">
@@ -132,9 +226,9 @@
       </div>
       <h3>Your cases</h3>
       <ol class="recap" id="recap"></ol>
-      <p class="session-end">That's the end of today's cases. Your teacher will take it from here.</p>
       <div class="actions">
-        <button class="btn ghost" type="button" data-go="home">Back to start</button>
+        <button class="btn primary" type="button" data-again>Play again</button>
+        <button class="btn ghost" type="button" data-choose>Choose another case file</button>
       </div>
     </section>
   </main>
@@ -155,6 +249,7 @@
   <script src="js/store.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/fib.js"></script>
+  <script src="js/evidence.js"></script>
   <script src="js/options-panel.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -1,4 +1,5 @@
-// Student options: text size, sound, reduced motion, high contrast, color theme.
+// Student options: text size, sound, Fib's trash talk, reduced motion, high
+// contrast, color theme.
 // Saved in this browser only; nothing here talks to the server. Loaded in
 // <head> so the saved look applies before the page first paints.
 (function (root) {
@@ -7,6 +8,7 @@
   const CHOICES = {
     textSize: ['standard', 'large', 'xlarge'],
     sound: [false, true],
+    taunts: [false, true],
     reducedMotion: [false, true],
     highContrast: [false, true],
     theme: ['case-board', 'pink-blue', 'night-shift', 'calm'],
@@ -16,6 +18,7 @@
     return {
       textSize: 'standard',
       sound: false,
+      taunts: true,
       reducedMotion: Boolean(systemReducedMotion),
       highContrast: false,
       theme: 'case-board',

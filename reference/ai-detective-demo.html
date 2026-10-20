@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Detective</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #DCEAFF;
+  --dot: #C3D7F7;
+  --surface: #FFFFFF;
+  --text: #1B2A6B;
+  --line: #1B2A6B;
+  --muted: #4A5687;
+  --accent: #FFC531;
+  --on-accent: #1B2A6B;
+  --fib: #FF3D7F;
+  --fib-strong: #D81E5B;
+  --person: #0B7F6C;
+  --clue: #F3F7FF;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  font-size: 100%;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111A3F;
+    --dot: #1C2858;
+    --surface: #1D2960;
+    --text: #F2F5FF;
+    --line: #F2F5FF;
+    --muted: #B9C3EA;
+    --clue: #26346F;
+    --fib-strong: #FF4F8B;
+    --person: #19B39A;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111A3F;
+  --dot: #1C2858;
+  --surface: #1D2960;
+  --text: #F2F5FF;
+  --line: #F2F5FF;
+  --muted: #B9C3EA;
+  --clue: #26346F;
+  --fib-strong: #FF4F8B;
+  --person: #19B39A;
+}
+:root[data-text="m"] { font-size: 112.5%; }
+:root[data-text="l"] { font-size: 125%; }
+:root[data-contrast="high"] { --muted: var(--text); --dot: transparent; }
+:root[data-contrast="high"] .panel { border-width: 4px; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1.3px, transparent 1.5px);
+  background-size: 14px 14px;
+  color: var(--text);
+  font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
+.display { font-family: "Bungee", "Arial Black", Impact, sans-serif; font-weight: 400; letter-spacing: 0.01em; }
+.panel {
+  background: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 6px 6px 0 var(--line);
+  padding: 20px;
+  margin-bottom: 22px;
+}
+
+/* Top bar */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 18px; }
+.logo { font-size: clamp(1.3rem, 4vw, 1.75rem); margin: 0; line-height: 1; }
+.options-tab {
+  border: 3px solid var(--line); background: var(--surface); border-radius: 999px;
+  padding: 8px 16px; font-weight: 700; min-height: 44px; box-shadow: 3px 3px 0 var(--line);
+}
+
+/* Fib */
+.fib-row { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; margin-bottom: 22px; }
+.fib-svg { width: 112px; height: 112px; overflow: visible; }
+.fib-svg .face { display: none; }
+.fib-svg[data-pose="scheming"] .face[data-face="scheming"],
+.fib-svg[data-pose="smug"] .face[data-face="smug"],
+.fib-svg[data-pose="caught"] .face[data-face="caught"],
+.fib-svg[data-pose="sulking"] .face[data-face="sulking"],
+.fib-svg[data-pose="impressed"] .face[data-face="impressed"] { display: inline; }
+.fib-body { fill: var(--fib); stroke: var(--line); stroke-width: 3; }
+.fib-tail { fill: none; stroke: var(--fib); stroke-width: 7; stroke-linecap: round; }
+.fib-tail-edge { fill: none; stroke: var(--line); stroke-width: 11; stroke-linecap: round; }
+.ink { fill: #1B2A6B; }
+.ink-stroke { stroke: #1B2A6B; stroke-width: 3; fill: none; stroke-linecap: round; }
+.eye { fill: #FFFFFF; stroke: #1B2A6B; stroke-width: 2.5; }
+.lid { fill: var(--fib); stroke: #1B2A6B; stroke-width: 2.5; }
+.bubble {
+  position: relative; background: var(--surface); border: 3px solid var(--line); border-radius: 18px;
+  padding: 12px 16px; font-weight: 700; box-shadow: 4px 4px 0 var(--line);
+}
+.bubble::before {
+  content: ""; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
+  border-width: 10px 14px 10px 0; border-style: solid; border-color: transparent var(--line) transparent transparent;
+}
+.bubble::after {
+  content: ""; position: absolute; left: -9px; top: 50%; transform: translateY(-50%);
+  border-width: 7px 10px 7px 0; border-style: solid; border-color: transparent var(--surface) transparent transparent;
+}
+.bubble-name { display: block; color: var(--fib-strong); font-size: 0.85rem; }
+
+/* Scoreboard */
+.score-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; margin-bottom: 14px; }
+.score { flex: 1 1 120px; border: 3px solid var(--line); border-radius: 12px; padding: 6px 12px; background: var(--surface); }
+.score small { display: block; color: var(--muted); font-weight: 700; }
+.score b { font-family: "Bungee", "Arial Black", sans-serif; font-weight: 400; font-size: 1.6rem; line-height: 1.1; }
+.score.fib b { color: var(--fib-strong); }
+.progress { flex: 1 1 120px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--muted); }
+
+/* Case */
+.case-title { font-size: clamp(1.2rem, 3.6vw, 1.5rem); margin: 0 0 6px; line-height: 1.2; }
+.item-kind { display: inline-block; background: var(--accent); color: var(--on-accent); font-weight: 700; border-radius: 999px; padding: 2px 12px; font-size: 0.9rem; margin-bottom: 10px; }
+.evidence { background: var(--clue); border: 2px dashed var(--line); border-radius: 10px; padding: 14px 16px; font-size: 1.08rem; margin: 0; }
+h3 { margin: 22px 0 4px; font-size: 1.1rem; }
+.hint { margin: 0 0 12px; color: var(--muted); }
+.questions { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.q {
+  display: flex; gap: 10px; align-items: flex-start; text-align: left; min-height: 56px;
+  border: 2px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 12px;
+}
+.q .key { flex: 0 0 auto; font-family: "Bungee", "Arial Black", sans-serif; width: 30px; height: 30px; border: 2px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 0.9rem; }
+.q[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: 3px 3px 0 var(--line); }
+.q[aria-pressed="true"] .key { border-color: var(--on-accent); }
+.q:disabled { cursor: default; }
+.q:disabled:not([aria-pressed="true"]) { opacity: 0.45; }
+.primary {
+  margin-top: 16px; border: 3px solid var(--line); border-radius: 999px; background: var(--text); color: var(--surface);
+  padding: 12px 22px; font-weight: 700; min-height: 48px; box-shadow: 4px 4px 0 var(--accent);
+}
+.primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.clues { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.clues li { border-left: 6px solid var(--accent); background: var(--clue); border-radius: 8px; padding: 10px 14px; }
+.clues li b { display: block; }
+.verdicts { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.verdict {
+  flex: 1 1 160px; min-height: 64px; border: 3px solid var(--line); border-radius: 14px; color: #FFFFFF;
+  font-family: "Bungee", "Arial Black", sans-serif; font-size: 1.25rem; box-shadow: 4px 4px 0 var(--line);
+}
+.verdict.person { background: var(--person); }
+.verdict.ai { background: var(--fib-strong); }
+
+/* Reveal */
+.reveal { position: relative; }
+.stamp-holder { display: flex; justify-content: center; margin: 4px 0 16px; }
+.stamp {
+  font-family: "Bungee", "Arial Black", sans-serif; font-size: clamp(2rem, 9vw, 3.2rem);
+  border: 6px solid currentColor; padding: 2px 22px; transform: rotate(-7deg); line-height: 1.15;
+}
+.stamp.person { color: var(--person); }
+.stamp.ai { color: var(--fib-strong); }
+.stamp.slam { animation: slam 380ms cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes slam { from { transform: rotate(-16deg) scale(2.4); opacity: 0; } to { transform: rotate(-7deg) scale(1); opacity: 1; } }
+.result { text-align: center; font-weight: 700; font-size: 1.15rem; margin: 0 0 10px; }
+.lesson { background: var(--clue); border-radius: 10px; padding: 12px 16px; margin: 0; }
+.lesson b { display: block; }
+
+/* End */
+.rank { font-size: clamp(2rem, 8vw, 3rem); margin: 4px 0; line-height: 1.1; color: var(--fib-strong); }
+.end-score { font-size: 1.15rem; font-weight: 700; margin: 0 0 6px; }
+.ranks { color: var(--muted); margin: 0; }
+
+/* Intro */
+.intro h2 { font-size: clamp(1.6rem, 6vw, 2.4rem); margin: 0 0 10px; line-height: 1.1; }
+.intro ol { padding-left: 1.3rem; margin: 0; }
+.intro li { margin-bottom: 6px; }
+
+/* Case file picker */
+.sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.set { text-align: left; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 12px; min-height: 64px; }
+.set b { display: block; font-family: "Bungee", "Arial Black", sans-serif; font-weight: 400; }
+.set span { display: block; color: var(--muted); font-size: 0.92rem; }
+.set[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: 3px 3px 0 var(--line); }
+.set[aria-pressed="true"] span { color: var(--on-accent); }
+.end-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.secondary { background: var(--surface); color: var(--text); box-shadow: 4px 4px 0 var(--line); }
+
+/* Options */
+dialog {
+  border: 3px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text);
+  box-shadow: 6px 6px 0 var(--line); padding: 20px; width: min(420px, calc(100vw - 32px));
+}
+dialog::backdrop { background: rgba(17, 26, 63, 0.55); }
+dialog h2 { margin: 0 0 14px; font-size: 1.3rem; }
+.opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 2px dashed var(--dot); }
+.opt:last-of-type { border-bottom: 0; }
+.seg { display: flex; border: 2px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; min-height: 40px; font-weight: 700; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.switch { border: 2px solid var(--line); border-radius: 999px; background: transparent; padding: 6px 14px; min-height: 40px; font-weight: 700; min-width: 64px; }
+.switch[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+.dialog-note { color: var(--muted); font-size: 0.9rem; margin: 12px 0 0; }
+.close { margin-top: 14px; }
+
+[hidden] { display: none !important; }
+:root[data-motion="reduce"] .stamp.slam { animation: none; }
+@media (prefers-reduced-motion: reduce) { .stamp.slam { animation: none; } }
+@media (max-width: 480px) {
+  .fib-row { grid-template-columns: 84px 1fr; }
+  .fib-svg { width: 84px; height: 84px; }
+  .panel { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <h1 class="logo display">AI Detective</h1>
+    <button class="options-tab" id="optionsBtn" aria-haspopup="dialog">⚙ Options</button>
+  </header>
+
+  <div class="fib-row">
+    <svg class="fib-svg" id="fib" data-pose="scheming" viewBox="0 0 120 120" role="img" aria-label="Fib, the prankster">
+      <path class="fib-tail-edge" d="M88 92 C112 98 118 74 104 68 C94 64 90 78 99 80"/>
+      <path class="fib-tail" d="M88 92 C112 98 118 74 104 68 C94 64 90 78 99 80"/>
+      <circle class="fib-body" cx="55" cy="62" r="42"/>
+      <g class="face" data-face="scheming">
+        <circle class="eye" cx="41" cy="56" r="12"/><circle class="eye" cx="69" cy="56" r="12"/>
+        <circle class="ink" cx="45" cy="60" r="5"/><circle class="ink" cx="73" cy="60" r="5"/>
+        <path class="lid" d="M28 56 A13 13 0 0 1 54 56 Z"/><path class="lid" d="M56 56 A13 13 0 0 1 82 56 Z"/>
+        <path class="ink-stroke" d="M29 40 L52 46 M81 40 L58 46"/>
+        <path class="ink-stroke" d="M40 80 Q56 90 72 77"/>
+      </g>
+      <g class="face" data-face="smug">
+        <circle class="eye" cx="41" cy="56" r="12"/><circle class="eye" cx="69" cy="56" r="12"/>
+        <circle class="ink" cx="41" cy="61" r="5"/><circle class="ink" cx="69" cy="61" r="5"/>
+        <path class="lid" d="M28 56 A13 13 0 0 1 54 56 Z"/><path class="lid" d="M56 56 A13 13 0 0 1 82 56 Z"/>
+        <path class="ink-stroke" d="M42 80 Q58 86 70 74"/>
+      </g>
+      <g class="face" data-face="caught">
+        <circle class="eye" cx="41" cy="54" r="13"/><circle class="eye" cx="69" cy="54" r="13"/>
+        <circle class="ink" cx="41" cy="54" r="3.5"/><circle class="ink" cx="69" cy="54" r="3.5"/>
+        <path class="ink-stroke" d="M30 36 Q41 30 50 36 M60 36 Q69 30 80 36"/>
+        <ellipse class="ink" cx="55" cy="82" rx="6" ry="8"/>
+      </g>
+      <g class="face" data-face="sulking">
+        <circle class="eye" cx="41" cy="57" r="12"/><circle class="eye" cx="69" cy="57" r="12"/>
+        <circle class="ink" cx="39" cy="63" r="5"/><circle class="ink" cx="67" cy="63" r="5"/>
+        <path class="ink-stroke" d="M30 42 L51 38 M59 38 L80 42"/>
+        <path class="ink-stroke" d="M44 84 Q55 76 66 84"/>
+      </g>
+      <g class="face" data-face="impressed">
+        <circle class="eye" cx="41" cy="55" r="13"/><circle class="eye" cx="69" cy="55" r="13"/>
+        <circle class="ink" cx="41" cy="56" r="6"/><circle class="ink" cx="69" cy="56" r="6"/>
+        <circle cx="44" cy="52" r="2" fill="#FFFFFF"/><circle cx="72" cy="52" r="2" fill="#FFFFFF"/>
+        <path class="ink-stroke" d="M41 77 Q55 92 69 77"/>
+      </g>
+    </svg>
+    <p class="bubble" id="fibLine" aria-live="polite"><span class="bubble-name">Fib</span><span id="fibText">Bet you can’t tell.</span></p>
+  </div>
+
+  <!-- Intro -->
+  <section class="panel intro" id="introScreen">
+    <h2 class="display">Ten cases. One trickster.</h2>
+    <p>I’m Fib. I made every case in this file. Some are fakes made with AI. Some are real things I hope you’ll doubt.</p>
+    <ol>
+      <li>Read the evidence.</li>
+      <li>Pick three of six detective questions. You only get those clues.</li>
+      <li>Decide: did a person make it, or AI?</li>
+    </ol>
+    <h3>Choose your case file</h3>
+    <div class="sets" id="setPicker" role="group" aria-label="Case file">
+      <button class="set" data-set="warmup" aria-pressed="false"><b>Warm-up</b><span>The first ten cases</span></button>
+      <button class="set" data-set="g6" aria-pressed="false"><b>Grade 6</b><span>Trickier clues</span></button>
+      <button class="set" data-set="g7" aria-pressed="false"><b>Grade 7</b><span>Clues that disagree</span></button>
+      <button class="set" data-set="g8" aria-pressed="false"><b>Grade 8</b><span>Deepfakes and invented sources</span></button>
+    </div>
+    <button class="primary" id="startBtn">Open case 1</button>
+  </section>
+
+  <!-- Game -->
+  <section id="gameScreen" hidden>
+    <div class="score-row">
+      <div class="score"><small>You</small><b id="youScore">0</b></div>
+      <div class="score fib"><small>Fib</small><b id="fibScore">0</b></div>
+      <div class="progress" id="progress">Case 1 of 10</div>
+    </div>
+
+    <article class="panel">
+      <span class="item-kind" id="itemKind">Video</span>
+      <h2 class="case-title display" id="caseTitle">Case</h2>
+      <p class="evidence" id="evidence"></p>
+
+      <div id="pickStep">
+        <h3>Pick three questions</h3>
+        <p class="hint" id="pickHint">0 of 3 picked</p>
+        <div class="questions" id="questions"></div>
+        <button class="primary" id="readBtn" disabled>Read the clues</button>
+      </div>
+
+      <div id="clueStep" hidden>
+        <h3>Your clues</h3>
+        <ul class="clues" id="clues"></ul>
+        <h3>Your verdict</h3>
+        <div class="verdicts">
+          <button class="verdict person" data-v="person">Person</button>
+          <button class="verdict ai" data-v="ai">AI</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel reveal" id="revealPanel" hidden>
+      <div class="stamp-holder"><div class="stamp" id="stamp">AI</div></div>
+      <p class="result" id="result"></p>
+      <p class="lesson"><b>Lesson</b><span id="lesson"></span></p>
+      <button class="primary" id="nextBtn">Next case</button>
+    </article>
+  </section>
+
+  <!-- End -->
+  <section class="panel" id="endScreen" hidden>
+    <p class="end-score" id="endScore"></p>
+    <p class="rank display" id="rank">Rookie</p>
+    <p class="ranks">Ranks: Rookie 0 to 3, Detective 4 to 6, Inspector 7 to 8, Chief 9 to 10.</p>
+    <div class="end-actions">
+      <button class="primary" id="againBtn">Play again</button>
+      <button class="primary secondary" id="menuBtn">Choose another case file</button>
+    </div>
+  </section>
+</div>
+
+<dialog id="options" aria-labelledby="optionsTitle">
+  <h2 id="optionsTitle">Options</h2>
+  <div class="opt"><span>Text size</span>
+    <div class="seg" id="textSeg" role="group" aria-label="Text size">
+      <button data-size="s">A</button><button data-size="m">A+</button><button data-size="l">A++</button>
+    </div>
+  </div>
+  <div class="opt"><span>Sound</span><button class="switch" role="switch" id="soundSw">On</button></div>
+  <div class="opt"><span>Reduced motion</span><button class="switch" role="switch" id="motionSw">Off</button></div>
+  <div class="opt"><span>High contrast</span><button class="switch" role="switch" id="contrastSw">Off</button></div>
+  <p class="dialog-note">Settings stay on this device. This demo collects nothing about you. Teacher tools come in the full version.</p>
+  <button class="primary close" id="closeOptions">Done</button>
+</dialog>
+
+<script>
+const QUESTIONS = [
+  { k: "A", q: "Who shared it?" },
+  { k: "B", q: "Can I find it anywhere else?" },
+  { k: "C", q: "Do the small details hold up?" },
+  { k: "D", q: "Does it include things only someone who was there would know?" },
+  { k: "E", q: "What happens when I ask a follow-up?" },
+  { k: "F", q: "Is there a label saying how it was made?" }
+];
+
+const WARMUP = [
+  {
+    title: "The skateboarding dog", kind: "Video", answer: "person",
+    item: "A video shows a bulldog riding a skateboard down a ramp at a park.",
+    clues: {
+      A: "The dog’s owner posted it. Her account has three years of videos of the same dog.",
+      B: "A local news site ran a story about the dog last year.",
+      C: "Nothing looks wrong.",
+      D: "The owner names the dog and the park, and says he still falls off sometimes.",
+      E: "You ask how he learned. She replies with an old video of him as a puppy, falling off.",
+      F: "No label."
+    },
+    lesson: "Surprising doesn’t mean fake. A long history from the same source is hard to fake.",
+    right: "Ugh. I was sure you’d call a skateboarding dog fake.",
+    wrong: "Ha! That dog is real. Three years of videos, and you didn’t check!"
+  },
+  {
+    title: "The shark on the highway", kind: "Photo", answer: "ai",
+    item: "A photo shows a shark swimming along a flooded highway. It has been shared thousands of times.",
+    clues: {
+      A: "An account called WOW Pics Daily that never says where its pictures come from.",
+      B: "The same photo appears with three different city names. No news station reports a shark.",
+      C: "It looks sharp and realistic. Nothing is obviously wrong.",
+      D: "No. The post doesn’t say who took it or when.",
+      E: "People ask “where is this?” in the comments. The account never answers.",
+      F: "No label."
+    },
+    lesson: "You can’t always tell by looking, and lots of shares don’t make something true.",
+    right: "Fine. You got me. Three cities, one shark. Sloppy of me.",
+    wrong: "Gotcha! You never checked whether anyone else saw my shark."
+  },
+  {
+    title: "The dragon drawing", kind: "Drawing", answer: "person",
+    item: "A pencil drawing of a dragon is pinned to the class art wall.",
+    clues: {
+      A: "Your classmate Maya put it up.",
+      B: "It isn’t online anywhere.",
+      C: "There are eraser marks, and one wing is bigger than the other.",
+      D: "Maya says the dragon is guarding her brother’s goldfish, Bubbles.",
+      E: "You ask how she made it. She shows three practice sketches in her notebook.",
+      F: "No label."
+    },
+    lesson: "Showing how something was made is strong proof.",
+    right: "Bah. I hoped the wonky wing would throw you off.",
+    wrong: "Ha! Maya drew that herself. Her sketches were right there in the notebook!"
+  },
+  {
+    title: "The book summary", kind: "Website", answer: "ai",
+    item: "A study website has a summary of the book your class just finished.",
+    clues: {
+      A: "The website doesn’t name an author.",
+      B: "Other summaries of the book don’t mention the big chase scene this one describes.",
+      C: "The spelling and grammar are perfect.",
+      D: "It describes a big chase scene. You read the book, and there is no chase.",
+      E: "There’s nobody to ask. The site has no author and no contact page.",
+      F: "Tiny print at the bottom says “Summaries are generated automatically.”"
+    },
+    lesson: "AI can state made-up things confidently. Check against the real thing.",
+    right: "Rats. I knew that chase scene was too much.",
+    wrong: "Gotcha! There’s no chase in that book, and you’ve read it!"
+  },
+  {
+    title: "The three hearts", kind: "Post", answer: "person",
+    item: "A post says: “Fun fact: an octopus has three hearts.”",
+    clues: {
+      A: "The city aquarium’s official page posted it.",
+      B: "An encyclopedia and a library book both say the same thing.",
+      C: "Nothing looks wrong.",
+      D: "The post says the keeper feeds their octopus, Pickle, at 2:00 every day.",
+      E: "Someone asks why three. The keeper explains that two pump blood through the gills and one pumps it to the rest of the body.",
+      F: "No label."
+    },
+    lesson: "Weird doesn’t mean fake. Check a source you trust.",
+    right: "Hmph. I thought three hearts sounded made up enough.",
+    wrong: "Ha! It’s true. One look in an encyclopedia would have told you."
+  },
+  {
+    title: "The cousin’s voice message", kind: "Voice message", answer: "ai",
+    item: "A voice message sounds exactly like your cousin. He asks you to send a gift card code for a game, fast.",
+    clues: {
+      A: "It came from a number you don’t recognize.",
+      B: "You call your cousin on his real number. He never sent it.",
+      C: "The voice sounds exactly like him.",
+      D: "It doesn’t use the nickname he always calls you.",
+      E: "You text back “what’s our dog’s name?” It doesn’t answer. It just says “hurry.”",
+      F: "No label."
+    },
+    lesson: "Voices can be copied. Check through a way you already trust, and tell an adult. Being rushed is a warning sign.",
+    right: "Ugh. One phone call to your real cousin and my whole plan falls apart.",
+    wrong: "Gotcha! That was a copied voice. You should have called him back."
+  },
+  {
+    title: "The purple sunset", kind: "Photo", answer: "person",
+    item: "A photo shows a bright purple and orange sky over the beach. It looks almost too good to be real.",
+    clues: {
+      A: "Your aunt posted it. She was at that beach that evening.",
+      B: "Other people in town posted the same sky that night, and so did the local weather page.",
+      C: "The colors look too bright to be real.",
+      D: "She says it happened right after the storm passed, around dinner time.",
+      E: "You ask for more. She sends four more photos, one with her thumb over the lens.",
+      F: "No label."
+    },
+    lesson: "“Too good to be true” is a feeling. Other witnesses are evidence.",
+    right: "Fine. The sky really did look like that. Half the town saw it.",
+    wrong: "Ha! Real sunset. Everyone in town posted it, and you didn’t look!"
+  },
+  {
+    title: "The friendly homework helper", kind: "Chat", answer: "ai",
+    item: "A chat box on a homework website is called Sam. Sam says, “I totally get it! I had the same problem in 5th grade.”",
+    clues: {
+      A: "A chat box on the website. It only gives the name Sam.",
+      B: "The site’s staff page doesn’t list anyone called Sam.",
+      C: "Sam replies in one second, every time, even at midnight.",
+      D: "Sam says it had the same problem in 5th grade but can’t say which school.",
+      E: "You ask “Are you a person?” Sam says “I’m an AI helper.”",
+      F: "Small print under the chat says “Sam is an AI helper.”"
+    },
+    lesson: "AI can sound like a friend. Look for the label, or ask. It’s fine to use, as long as you know what it is.",
+    right: "Bah. I can’t believe I left the label on.",
+    wrong: "Gotcha! Sam’s an AI helper. All you had to do was ask."
+  },
+  {
+    title: "The five-star review", kind: "Review", answer: "ai",
+    item: "A review of a new game says: “This is an amazing game that exceeds expectations in every way. Highly recommended!”",
+    clues: {
+      A: "The account reviewed 50 different things on the same day.",
+      B: "The exact same sentences appear in reviews of other games.",
+      C: "There are no spelling mistakes.",
+      D: "It never names a level, a character, or anything that happens in the game.",
+      E: "Someone asks “what’s your favorite level?” Nobody replies.",
+      F: "No label."
+    },
+    lesson: "Praise that could fit anything is a warning sign.",
+    right: "Rats. I should have at least named a level.",
+    wrong: "Gotcha! Fifty reviews in one day, and not one detail about the game."
+  },
+  {
+    title: "The hamster poem", kind: "Poem", answer: "person",
+    item: "Your friend Leo hands you a short poem about his hamster.",
+    clues: {
+      A: "Leo gave it to you himself at lunch.",
+      B: "It isn’t online anywhere.",
+      C: "It has two spelling mistakes.",
+      D: "It’s about his hamster Biscuit escaping behind the fridge last week. He told you about that when it happened.",
+      E: "You ask which line was hardest. He shows you his crossed-out tries at rhyming “fridge.”",
+      F: "No label."
+    },
+    lesson: "Mistakes alone don’t prove a person made it. Personal details and seeing the work do.",
+    right: "Hmph. I was counting on those spelling mistakes to confuse you.",
+    wrong: "Ha! Leo wrote that. He showed you his crossed-out lines!"
+  }
+];
+
+const GRADE6 = [
+  { title: "The museum cat", kind: "Photo", answer: "person",
+    item: "The city museum posts a photo of an ancient Egyptian cat mummy.",
+    clues: { A: "The city museum’s official account posted it.", B: "The museum’s website lists it in its collection with a catalog number.", C: "The wrappings look oddly perfect, almost like a printed pattern.", D: "The post names the gallery room and says it returned from repair last month.", E: "Someone asks how old it is. The museum replies with an age and links the collection page.", F: "No label." },
+    lesson: "Something can look too neat and still be real. A museum’s own records beat how it looks.",
+    right: "Rats. I thought the neat wrapping would fool you.", wrong: "Ha! Real cat mummy. Its catalog number was right there." },
+  { title: "The robot cleaner", kind: "News post", answer: "ai",
+    item: "A post says a 6th grader built a robot that cleans a whole school in an hour.",
+    clues: { A: "A page called Kid Genius News, created two weeks ago.", B: "No school or local paper mentions it.", C: "The robot looks real, but the school sign behind it has letters that don’t spell anything.", D: "It never names the student, the school or the town.", E: "Comments ask which school. The page posts another amazing kid story instead.", F: "No label." },
+    lesson: "A story that can’t be traced to a real person or place is a warning sign.",
+    right: "Ugh. Scrambled letters on the sign. My weakness.", wrong: "Gotcha! No name, no school, no town. You believed a ghost." },
+  { title: "The book report", kind: "Homework", answer: "ai",
+    item: "A classmate’s paragraph about the novel your class just read.",
+    clues: { A: "Your classmate Jordan turned it in.", B: "A study site has a paragraph with almost the same sentences.", C: "The writing is smooth, but it gets the main character’s sister’s name wrong.", D: "It never mentions anything from your class discussion of the ending.", E: "The teacher asks Jordan about his point. He can’t explain it.", F: "No label." },
+    lesson: "A real writer can explain their own ideas. Wrong details about a book you both read are a big clue.",
+    right: "Hmph. The wrong sister’s name gave me away.", wrong: "Ha! He couldn’t explain his own paragraph, and you missed it." },
+  { title: "The frozen bubble", kind: "Video", answer: "person",
+    item: "A soap bubble freezes into ice crystals that spread across it like a special effect.",
+    clues: { A: "A weather reporter at your local TV station posted it.", B: "Many people in cold places have posted videos of the same thing.", C: "The crystals spread so perfectly it looks fake.", D: "She says it was well below freezing that morning and her kids blew the bubbles.", E: "Asked how, she explains: bubble soap, very cold air and no wind.", F: "No label." },
+    lesson: "Nature can look like special effects. Many separate videos of the same thing is good evidence.",
+    right: "Fine. Frozen bubbles are real. I hoped you didn’t know.", wrong: "Gotcha! Real bubble. Half the internet has filmed one." },
+  { title: "The friendly new player", kind: "Game chat", answer: "ai",
+    item: "A new player called Nova compliments everyone in your game server.",
+    clues: { A: "The account was made yesterday and has no profile picture.", B: "The exact message “Love your builds, you’re so talented!” went to 40 players.", C: "Perfect spelling, and replies within a second, day and night.", D: "Nova never mentions anything specific about the game you’re playing together.", E: "You ask what Nova built last week. Nova changes the subject to a link for free coins.", F: "No label." },
+    lesson: "Bots can act friendly. Copy-paste compliments plus a link are a warning sign: don’t click, and tell an adult.",
+    right: "Rats. Forty players, same compliment. Lazy of me.", wrong: "Gotcha! Nova’s a bot. You almost clicked my link." },
+  { title: "Grandma’s recipe card", kind: "Photo", answer: "person",
+    item: "A stained, faded handwritten recipe card for cornbread, shared in your family group chat.",
+    clues: { A: "Your uncle posted it.", B: "It isn’t online anywhere.", C: "Some words are smudged, and one amount is crossed out and rewritten.", D: "Your uncle says it was in Grandma’s kitchen drawer and she always doubled the butter.", E: "You ask your mom. She remembers the same card.", F: "No label." },
+    lesson: "Someone you trust who remembers it is strong evidence.",
+    right: "Bah. Your mom remembered the card.", wrong: "Ha! Real card. Your own mom could have told you." },
+  { title: "The famous quote", kind: "Website", answer: "ai",
+    item: "A quote site says a famous inventor once said, “Failure is just success that hasn’t been tagged yet.”",
+    clues: { A: "A quote site with no author and no sources.", B: "The quote appears in no book, speech or interview you can find.", C: "It sounds wise and modern.", D: "It gives no date, book or speech it came from.", E: "You email for the source. An automatic reply says quotes are “curated by our system.”", F: "No label." },
+    lesson: "Real quotes can be traced to where they were said. If nobody can find the source, don’t use it.",
+    right: "Ugh. No source, no quote. You’re learning.", wrong: "Gotcha! Nobody ever said that. I made it up." },
+  { title: "Toast the lizard", kind: "Photo", answer: "person",
+    item: "The school website shows the class bearded dragon wearing a tiny party hat.",
+    clues: { A: "The science teacher posted it on the school’s official website.", B: "The same lizard is in last year’s yearbook.", C: "The hat looks a bit fake and the lighting is strange.", D: "The post names the lizard, Toast, and says it was his fifth birthday.", E: "You ask the teacher. She shows you the hat in her desk drawer.", F: "No label." },
+    lesson: "Strange lighting isn’t proof. Ask someone who was there.",
+    right: "Hmph. She kept the hat.", wrong: "Ha! Toast is real, and so is the hat." },
+  { title: "The glowing frog", kind: "Video", answer: "ai",
+    item: "A short video shows a “newly discovered” glowing blue frog in a rainforest.",
+    clues: { A: "A channel that posts a new “discovered animal” every day.", B: "No science site or museum mentions the frog.", C: "In one frame, the frog’s toes blend into the leaf.", D: "It never names the scientists or the country.", E: "Comments ask where. The channel pins “Nature is amazing!”", F: "The description says “Made with creative tools.”" },
+    lesson: "Real discoveries are reported by named scientists in named places. Vague wording like “creative tools” can be a quiet label.",
+    right: "Rats. You read the fine print.", wrong: "Gotcha! A new animal every day? That should have tipped you off." },
+  { title: "The thank-you card", kind: "Card", answer: "person",
+    item: "Your lab partner gives you a typed thank-you card with perfect spelling and polished sentences.",
+    clues: { A: "Your lab partner Priya gave it to you in class.", B: "It isn’t online anywhere.", C: "The spelling is perfect and the sentences are very polished.", D: "It mentions the exact moment your volcano overflowed onto the teacher’s shoes.", E: "You ask her about it. She says her older sister helped fix her spelling.", F: "No label." },
+    lesson: "Polished writing isn’t proof of AI. Details only someone who was there would know matter more.",
+    right: "Bah. I bet on the perfect spelling.", wrong: "Ha! Priya wrote it. Nobody else knew about the shoes." }
+];
+
+const GRADE7 = [
+  { title: "The school closure", kind: "Screenshot", answer: "ai",
+    item: "A screenshot of a district notice saying school is closed Friday for a water leak, forwarded in a group chat.",
+    clues: { A: "A classmate forwarded it. Nobody knows who made it.", B: "The district website and official app say nothing about a closure.", C: "The logo looks right, but the date says Friday the 31st in a month with 30 days.", D: "It names no school building and no contact person.", E: "The classmate who made it admits he asked an AI app for “a school closure notice” as a joke.", F: "No label." },
+    lesson: "Screenshots are easy to fake. Go to the official source directly.",
+    right: "Ugh. The 31st. I can’t count.", wrong: "Gotcha! Enjoy your Friday. At school." },
+  { title: "The flooded street", kind: "Photo", answer: "person",
+    item: "A flooded street, shared today with the caption “Our town right now!”",
+    clues: { A: "A neighborhood page with lots of followers.", B: "A reverse image search finds the same photo in a news article from years ago, in another state.", C: "Nothing looks wrong. The water and reflections look natural.", D: "It doesn’t say which street.", E: "Asked which street, the page deletes the post.", F: "No label." },
+    lesson: "It’s a real photo with a false caption. A real photo can still tell a false story, so check when and where it was first posted.",
+    right: "Fine. Real photo, wrong place and wrong year.", wrong: "Gotcha! A person took that photo. I just lied about where." },
+  { title: "The quitting streamer", kind: "Audio clip", answer: "ai",
+    item: "Your favorite streamer, Skyla, seems to say she’s quitting forever.",
+    clues: { A: "An account called SkylaLeaks, not her official one.", B: "Her official channels posted next week’s stream schedule.", C: "The voice sounds exactly like her.", D: "It skips her usual sign-off and never mentions her dog, who’s on every stream.", E: "Fans ask her directly. She posts “That’s not me!”", F: "No label." },
+    lesson: "Voices can be cloned. Check the person’s own official accounts.",
+    right: "Ugh. She answered her fans.", wrong: "Gotcha! Cloned voice. Her real account said otherwise." },
+  { title: "The cell diagram", kind: "Worksheet", answer: "person",
+    item: "A plant cell diagram with very smooth, bright, perfect shapes.",
+    clues: { A: "Your science teacher handed it out.", B: "The same diagram is in your textbook’s online resources.", C: "Every shape is perfectly smooth and brightly colored.", D: "The labels match your unit’s vocabulary words exactly.", E: "You ask. Your teacher shows you the textbook page it came from.", F: "A credit line at the bottom names the publisher’s illustrator." },
+    lesson: "Smooth digital art isn’t automatically AI. Credits and sources tell you who made it.",
+    right: "Bah. The credit line was right there.", wrong: "Ha! A human illustrator drew it. Smooth isn’t the same as AI." },
+  { title: "The glowing sneakers", kind: "Online store", answer: "ai",
+    item: "A store sells glow-in-the-dark sneakers with three perfect product photos.",
+    clues: { A: "A store you’ve never heard of that opened last month.", B: "The same photos appear on five other stores, all at different prices.", C: "In one photo, the laces go into the shoe and never come out.", D: "There are no customer photos, only perfect studio shots.", E: "You ask for a real photo. The store sends the same picture again.", F: "No label." },
+    lesson: "AI photos can sell products that don’t exist. Look for real customer photos.",
+    right: "Rats. The laces were a mess.", wrong: "Gotcha! Those shoes don’t exist." },
+  { title: "The bracelet fundraiser", kind: "News article", answer: "person",
+    item: "A 7th grader raised money for the animal shelter by selling bracelets.",
+    clues: { A: "Your local newspaper’s website, with a named reporter.", B: "The animal shelter thanked her on its own page.", C: "The photo is a bit blurry and her hand is cut off at the edge.", D: "It names her school and the shelter, and quotes her mom.", E: "You email the reporter. She replies with the day she interviewed them.", F: "No label." },
+    lesson: "Named people and places, confirmed by more than one source, are strong evidence.",
+    right: "Hmph. The shelter backed her up.", wrong: "Ha! Real kid, real bracelets, real story." },
+  { title: "The essay sources", kind: "Bibliography", answer: "ai",
+    item: "A classmate’s essay lists five sources, including The Secret Letters of the Mayflower by Dr. Helen Brooks.",
+    clues: { A: "Your classmate Sam’s essay.", B: "The library catalog and an online search find no such book.", C: "Every citation is perfectly formatted.", D: "Sam can’t say what any of the books looked like or where he found them.", E: "Asked to bring one in, Sam says he’ll “look for it.”", F: "No label." },
+    lesson: "AI can invent sources that look real. Always check that a source exists.",
+    right: "Ugh. You checked the library.", wrong: "Gotcha! That book doesn’t exist. I made it up." },
+  { title: "The dancing robot", kind: "Video", answer: "person",
+    item: "A robot dog dances smoothly to music at a technology fair.",
+    clues: { A: "A local college’s engineering club posted it.", B: "The college news page has an article about the fair with photos of the same robot.", C: "The movement looks too smooth to be real.", D: "The club names the students who programmed the dance and the song they used.", E: "You ask how long it took. A student says three weeks and shares a clip of it falling over.", F: "No label." },
+    lesson: "Real technology can look unreal. Bloopers and behind-the-scenes clips are hard to fake.",
+    right: "Fine. The blooper gave it away.", wrong: "Ha! Real robot. You thought the robot was the trick." },
+  { title: "The castle painting", kind: "Digital art", answer: "ai",
+    item: "Kai, an online friend, shares a detailed castle painting and says “drew this in an hour!”",
+    clues: { A: "Kai, a friend you’ve never met in person.", B: "A search finds the same image on an AI art page, posted a week earlier.", C: "Some castle windows melt into each other.", D: "Kai has no sketches or older art to show.", E: "You ask which brush he used. Kai says “the normal one.”", F: "No label." },
+    lesson: "Ask to see the process. Real artists usually have sketches, layers or older work.",
+    right: "Bah. Those melting windows.", wrong: "Gotcha! Kai didn’t draw it. No person did." },
+  { title: "The storm warning", kind: "Phone alert", answer: "person",
+    item: "An urgent weather warning appears on your parent’s phone in capital letters.",
+    clues: { A: "It arrived as an official emergency alert from the weather service.", B: "The local TV station and the city website post the same warning.", C: "The capital letters and urgent wording feel like a scam.", D: "It names your county and specific times.", E: "Your parent calls 311. They confirm the warning.", F: "It’s marked as an official emergency alert." },
+    lesson: "Urgent doesn’t mean fake. Official channels that agree with each other can be trusted.",
+    right: "Hmph. Too official for me.", wrong: "Ha! It was real. Scary doesn’t mean fake." }
+];
+
+const GRADE8 = [
+  { title: "The mayor’s announcement", kind: "Video", answer: "ai",
+    item: "The mayor appears to announce that summer vacation is being cut by two weeks.",
+    clues: { A: "An account called CityNewsNow, not the city’s official account.", B: "The city’s website and real news outlets have nothing about it.", C: "Her lips are slightly out of sync on a few words. Otherwise it’s convincing.", D: "It mentions a “new state law” but never names it.", E: "Reporters ask the mayor’s office. They say the video is fake.", F: "No label." },
+    lesson: "Deepfakes of officials spread fast. Check official channels and real news outlets before sharing.",
+    right: "Ugh. You called the mayor’s office.", wrong: "Gotcha! The mayor never said that. I did." },
+  { title: "The council meeting photo", kind: "Photo", answer: "person",
+    item: "Students hold signs at a city council meeting. A popular comment says “This is obviously AI.”",
+    clues: { A: "A photographer for the local paper, credited by name.", B: "Several people posted photos of the same meeting from different angles.", C: "One sign’s letters look warped.", D: "The caption names the meeting date and the issue being discussed.", E: "The photographer shares two more shots taken seconds apart.", F: "No label." },
+    lesson: "Calling something AI can be a trick too. Judge the evidence, not the accusation.",
+    right: "Fine. The sign was just bent.", wrong: "Ha! Real photo. You believed the comment instead of the evidence." },
+  { title: "The eyewitness post", kind: "Post", answer: "ai",
+    item: "A vivid first-person account of a fire downtown, shared 10,000 times.",
+    clues: { A: "An account created yesterday, with no photos of its own.", B: "The fire department confirms a small fire, but the post’s details, like three trucks and a rescued parrot, appear nowhere else.", C: "The writing is vivid and well organized, like a story.", D: "It mentions a bakery on that street that closed years ago.", E: "Asked for a photo, the account posts a stock image.", F: "No label." },
+    lesson: "AI can wrap invented details around a real event. Check the details you can verify.",
+    right: "Rats. The bakery closed years ago.", wrong: "Gotcha! There was a fire. The parrot was my idea." },
+  { title: "The screen time chart", kind: "Chart", answer: "person",
+    item: "In a class debate, a classmate shares a chart showing teen screen time doubling over ten years.",
+    clues: { A: "It comes from a university research center’s report, linked in the slide.", B: "The report on the center’s website has the same chart and a data table.", C: "The colors and fonts look like a template.", D: "The report says how many teens were surveyed and when.", E: "You email the center. They reply explaining how the survey was done.", F: "It’s labeled with the report’s name as the source." },
+    lesson: "For data, look for the method: who was asked, how many and when.",
+    right: "Hmph. You actually read the method.", wrong: "Ha! Real data. A template doesn’t make it fake." },
+  { title: "The vacation photo", kind: "Photo", answer: "ai",
+    item: "Your classmate Dana posts herself standing in front of the Eiffel Tower.",
+    clues: { A: "Dana posted it on her own account.", B: "A reverse image search finds the background in a stock photo.", C: "Shadows on Dana fall to the left. Shadows on the tower fall to the right.", D: "Dana can’t name the hotel, the food or anything she did there.", E: "You ask about the flight. Dana laughs and says she made it with an app.", F: "No label." },
+    lesson: "Light and shadows that don’t match are a clue. So is a story with no details.",
+    right: "Ugh. Shadows. Always the shadows.", wrong: "Gotcha! Dana never left the city." },
+  { title: "The perfect performance", kind: "Video", answer: "person",
+    item: "A 14-year-old sings a hard song in perfect pitch.",
+    clues: { A: "A local music school’s official channel.", B: "Her school also posted her singing the same song at a concert.", C: "Her voice is so clean it sounds edited.", D: "The video names her teacher, the competition and the date.", E: "Asked if it was edited, the music school shares the raw recording.", F: "No label." },
+    lesson: "Talent can look fake. Raw recordings and other performances are evidence.",
+    right: "Fine. She really is that good.", wrong: "Ha! Real voice. You doubted a real talent." },
+  { title: "The study guide", kind: "Document", answer: "ai",
+    item: "A study guide for the science test, shared in the class group chat.",
+    clues: { A: "A classmate shared it. He didn’t say where it came from.", B: "It’s different from the guide your teacher posted.", C: "It’s neatly formatted and confident, but says the Moon is about 384 kilometers from Earth. It’s about 384,000.", D: "It covers topics your class never studied and skips two that are on the test.", E: "The classmate admits he generated it from the test’s title.", F: "No label." },
+    lesson: "AI can sound sure and still be wrong. Check facts against your own notes.",
+    right: "Rats. You knew how far the Moon is.", wrong: "Gotcha! Good luck on that test." },
+  { title: "The scientist’s interview", kind: "Podcast", answer: "person",
+    item: "A marine scientist describes a research trip. Her voice has an odd, robotic echo.",
+    clues: { A: "A university’s official podcast.", B: "Her university page lists the interview and her published research.", C: "Her voice has a strange robotic echo.", D: "She tells a story about the research boat’s engine failing, naming the boat.", E: "Listeners ask about the echo. The host says the microphone was faulty.", F: "No label." },
+    lesson: "Bad audio isn’t proof of AI. Confirm the person exists and the source is real.",
+    right: "Bah. It was just a bad microphone.", wrong: "Ha! Real scientist. Bad sound isn’t AI." },
+  { title: "The tutor’s email", kind: "Email", answer: "ai",
+    item: "“Ms. Carter, Math Tutor” offers you free help and says she loved your recent math project.",
+    clues: { A: "The sender’s address is a random string of letters at a free email service.", B: "No tutor by that name exists at your school or online.", C: "It’s perfectly polite but opens with “Dear Student,” not your name.", D: "It praises “your recent math project” but never says which one.", E: "You ask which project. The reply repeats the first email word for word, with a link.", F: "No label." },
+    lesson: "Generic praise, no real details and a link is a common pattern. Show an adult before clicking anything.",
+    right: "Ugh. You asked which project.", wrong: "Gotcha! Ms. Carter doesn’t exist." },
+  { title: "The neat quiz", kind: "Quiz", answer: "person",
+    item: "Your English teacher’s quiz has questions that all look the same length and style.",
+    clues: { A: "Your English teacher handed it out.", B: "It isn’t online anywhere.", C: "Every question is the same length with four choices, like a template.", D: "The questions use jokes and examples from your class discussions.", E: "You ask. She shows you her drafts with crossed-out questions.", F: "No label." },
+    lesson: "Neat and template-like isn’t proof. Details from your own class are hard for AI to know.",
+    right: "Hmph. She kept her drafts.", wrong: "Ha! Your teacher wrote it. Neat isn’t the same as AI." }
+];
+
+const SETS = { warmup: WARMUP, g6: GRADE6, g7: GRADE7, g8: GRADE8 };
+const SET_NAMES = { warmup: "Warm-up", g6: "Grade 6", g7: "Grade 7", g8: "Grade 8" };
+let chosenSet = "g6";
+
+const $ = (id) => document.getElementById(id);
+const state = { cases: GRADE6, order: [], i: 0, picks: [], you: 0, fib: 0 };
+
+/* ---------- Settings (device only) ---------- */
+const settings = { text: "s", sound: true, motion: false, contrast: false };
+try {
+  const saved = JSON.parse(localStorage.getItem("ai-detective-settings") || "null");
+  if (saved && typeof saved === "object") Object.assign(settings, saved);
+} catch (e) { /* storage unavailable: use defaults */ }
+
+function saveSettings() {
+  try { localStorage.setItem("ai-detective-settings", JSON.stringify(settings)); } catch (e) {}
+}
+function applySettings() {
+  const root = document.documentElement;
+  root.dataset.text = settings.text;
+  root.dataset.contrast = settings.contrast ? "high" : "normal";
+  root.dataset.motion = settings.motion ? "reduce" : "full";
+  document.querySelectorAll("#textSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === settings.text)));
+  setSwitch($("soundSw"), settings.sound);
+  setSwitch($("motionSw"), settings.motion);
+  setSwitch($("contrastSw"), settings.contrast);
+}
+function setSwitch(el, on) { el.setAttribute("aria-checked", String(on)); el.textContent = on ? "On" : "Off"; }
+
+/* ---------- Sound ---------- */
+let audioCtx = null;
+function tone(freq, dur, type, delay) {
+  if (!settings.sound) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + dur);
+  } catch (e) {}
+}
+function stampSound(correct) {
+  tone(90, 0.18, "square");
+  if (correct) { tone(660, 0.15, "triangle", 0.12); tone(880, 0.25, "triangle", 0.24); }
+  else { tone(330, 0.2, "sawtooth", 0.12); tone(220, 0.35, "sawtooth", 0.28); }
+}
+
+/* ---------- Fib ---------- */
+function fibSay(pose, text) {
+  $("fib").dataset.pose = pose;
+  $("fibText").textContent = text;
+}
+
+/* ---------- Flow ---------- */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function show(screen) {
+  ["introScreen", "gameScreen", "endScreen"].forEach((id) => { $(id).hidden = id !== screen; });
+}
+function startGame(shuffled) {
+  state.cases = SETS[chosenSet];
+  state.order = shuffled ? shuffle(state.cases.map((_, i) => i)) : state.cases.map((_, i) => i);
+  state.i = 0; state.you = 0; state.fib = 0;
+  show("gameScreen");
+  renderCase();
+}
+function current() { return state.cases[state.order[state.i]]; }
+
+function renderCase() {
+  const c = current();
+  state.picks = [];
+  $("youScore").textContent = state.you;
+  $("fibScore").textContent = state.fib;
+  $("progress").textContent = SET_NAMES[chosenSet] + ": case " + (state.i + 1) + " of " + state.cases.length;
+  $("itemKind").textContent = c.kind;
+  $("caseTitle").textContent = c.title;
+  $("evidence").textContent = c.item;
+  $("pickStep").hidden = false;
+  $("clueStep").hidden = true;
+  $("revealPanel").hidden = true;
+  const qWrap = $("questions");
+  qWrap.innerHTML = "";
+  QUESTIONS.forEach(({ k, q }) => {
+    const b = document.createElement("button");
+    b.className = "q";
+    b.dataset.k = k;
+    b.setAttribute("aria-pressed", "false");
+    b.innerHTML = '<span class="key">' + k + "</span><span>" + q + "</span>";
+    b.addEventListener("click", () => togglePick(k));
+    qWrap.appendChild(b);
+  });
+  updatePicks();
+  document.querySelectorAll(".verdict").forEach((b) => (b.disabled = false));
+  fibSay("scheming", state.i === 0 ? "Three questions. Pick carefully, detective." : pickLine());
+}
+function pickLine() {
+  const lines = ["Try this one.", "I’m proud of this one.", "You’ll never crack this.", "Three questions. Make them count.", "Go on. Guess wrong."];
+  return lines[state.i % lines.length];
+}
+function togglePick(k) {
+  const at = state.picks.indexOf(k);
+  if (at >= 0) state.picks.splice(at, 1);
+  else if (state.picks.length < 3) state.picks.push(k);
+  updatePicks();
+}
+function updatePicks() {
+  const n = state.picks.length;
+  document.querySelectorAll(".q").forEach((b) => {
+    const on = state.picks.includes(b.dataset.k);
+    b.setAttribute("aria-pressed", String(on));
+    b.disabled = !on && n >= 3;
+  });
+  $("pickHint").textContent = n + " of 3 picked";
+  $("readBtn").disabled = n !== 3;
+}
+function readClues() {
+  const c = current();
+  document.querySelectorAll(".q").forEach((b) => (b.disabled = true));
+  $("readBtn").disabled = true;
+  const list = $("clues");
+  list.innerHTML = "";
+  QUESTIONS.filter(({ k }) => state.picks.includes(k)).forEach(({ k, q }) => {
+    const li = document.createElement("li");
+    const head = document.createElement("b");
+    head.textContent = k + ". " + q;
+    const body = document.createElement("span");
+    body.textContent = c.clues[k];
+    li.append(head, body);
+    list.appendChild(li);
+  });
+  $("pickStep").hidden = true;
+  $("clueStep").hidden = false;
+  fibSay("smug", "Well? Person or AI?");
+}
+function giveVerdict(v) {
+  const c = current();
+  const correct = v === c.answer;
+  document.querySelectorAll(".verdict").forEach((b) => (b.disabled = true));
+  if (correct) state.you++; else state.fib++;
+  $("youScore").textContent = state.you;
+  $("fibScore").textContent = state.fib;
+
+  const stamp = $("stamp");
+  stamp.textContent = c.answer === "ai" ? "AI" : "PERSON";
+  stamp.className = "stamp " + c.answer;
+  void stamp.offsetWidth;
+  stamp.classList.add("slam");
+  $("result").textContent = correct ? "You caught it. Point to you." : "Fib fooled you. Point to Fib.";
+  $("lesson").textContent = c.lesson;
+  $("nextBtn").textContent = state.i + 1 < state.cases.length ? "Next case" : "See your rank";
+  $("revealPanel").hidden = false;
+  fibSay(correct ? "caught" : "smug", correct ? c.right : c.wrong);
+  stampSound(correct);
+  $("revealPanel").scrollIntoView({ behavior: settings.motion ? "auto" : "smooth", block: "start" });
+  $("nextBtn").focus({ preventScroll: true });
+}
+function next() {
+  state.i++;
+  if (state.i >= state.cases.length) return endGame();
+  renderCase();
+  window.scrollTo({ top: 0, behavior: settings.motion ? "auto" : "smooth" });
+}
+function endGame() {
+  const s = state.you;
+  const rank = s >= 9 ? "Chief" : s >= 7 ? "Inspector" : s >= 4 ? "Detective" : "Rookie";
+  $("endScore").textContent = "You " + s + ", Fib " + state.fib;
+  $("rank").textContent = rank;
+  show("endScreen");
+  if (s >= 9) fibSay("impressed", "Fine. You’re good. I’m already planning my next trick.");
+  else if (s >= 7) fibSay("sulking", "Not bad. I’ll have to try harder next time.");
+  else if (s >= 4) fibSay("sulking", "You got some. I got some. Rematch?");
+  else fibSay("smug", "Ha! Come back when you ask better questions.");
+  window.scrollTo({ top: 0, behavior: settings.motion ? "auto" : "smooth" });
+}
+
+/* ---------- Wiring ---------- */
+function markSet() {
+  document.querySelectorAll(".set").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.set === chosenSet)));
+}
+document.querySelectorAll(".set").forEach((b) => b.addEventListener("click", () => { chosenSet = b.dataset.set; markSet(); }));
+markSet();
+$("startBtn").addEventListener("click", () => startGame(false));
+$("menuBtn").addEventListener("click", () => {
+  show("introScreen");
+  fibSay("scheming", "Pick a harder file. I dare you.");
+  window.scrollTo({ top: 0, behavior: settings.motion ? "auto" : "smooth" });
+});
+$("againBtn").addEventListener("click", () => startGame(true));
+$("readBtn").addEventListener("click", readClues);
+$("nextBtn").addEventListener("click", next);
+document.querySelectorAll(".verdict").forEach((b) => b.addEventListener("click", () => giveVerdict(b.dataset.v)));
+
+const dlg = $("options");
+$("optionsBtn").addEventListener("click", () => { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", ""); });
+$("closeOptions").addEventListener("click", () => { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); });
+document.querySelectorAll("#textSeg button").forEach((b) => b.addEventListener("click", () => { settings.text = b.dataset.size; applySettings(); saveSettings(); }));
+$("soundSw").addEventListener("click", () => { settings.sound = !settings.sound; applySettings(); saveSettings(); });
+$("motionSw").addEventListener("click", () => { settings.motion = !settings.motion; applySettings(); saveSettings(); });
+$("contrastSw").addEventListener("click", () => { settings.contrast = !settings.contrast; applySettings(); saveSettings(); });
+
+applySettings();
+</script>
+</body>
+</html>
