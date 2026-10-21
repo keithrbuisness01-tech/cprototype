@@ -59,4 +59,37 @@ const page = [
 
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'index.html'), page);
+
+// The gameplay video, as a file to link to and a page that plays it.
+const VIDEO = 'assets/video/ai-detective-gameplay';
+if (fs.existsSync(path.join(ROOT, VIDEO + '.mp4'))) {
+  fs.copyFileSync(path.join(ROOT, VIDEO + '.mp4'), path.join(OUT, 'gameplay.mp4'));
+  fs.copyFileSync(path.join(ROOT, VIDEO + '.jpg'), path.join(OUT, 'gameplay.jpg'));
+  fs.writeFileSync(path.join(OUT, 'video.html'), [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>AI Detective · Gameplay video</title>',
+    '<meta name="description" content="30 seconds of AI Detective: students run checks before they trust what they see, and play against Fib the prankster.">',
+    '<link rel="icon" href="' + favicon + '">',
+    '<style>',
+    'body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; box-sizing: border-box; background: #ffffff; color: #1a1033; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-align: center; }',
+    'h1 { margin: 0; font-size: 1.4rem; }',
+    'p { margin: 0; }',
+    'video { width: min(960px, 100%); height: auto; border: 2px solid #1a1033; border-radius: 12px; box-shadow: 5px 5px 0 #00c8ff; background: #ffffff; }',
+    'a { color: #3d1a78; font-weight: 700; }',
+    '@media (prefers-color-scheme: dark) { body { background: #14102a; color: #f3efff; } a { color: #c9a7ff; } video { border-color: #f3efff; } }',
+    '</style>',
+    '</head>',
+    '<body>',
+    '<h1>AI Detective: 30 seconds of play</h1>',
+    '<video src="gameplay.mp4" poster="gameplay.jpg" controls playsinline preload="metadata" width="1280" height="720"></video>',
+    '<p><a href="/">Play the demo</a> · <a href="gameplay.mp4" download>Download the video</a></p>',
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n'));
+}
 console.log('Demo written to ' + path.relative(ROOT, path.join(OUT, 'index.html')) + ' (' + Math.round(page.length / 1024) + ' KB, ' + caseSets.length + ' case files)');

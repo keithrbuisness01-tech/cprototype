@@ -22,6 +22,12 @@ test('the demo build is one page with every case file and no outside links', () 
     for (const file of ['ui.js', 'casedata.js', 'game.js', 'store.js', 'evidence.js', 'app.js']) {
       assert.ok(page.includes(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8').slice(0, 200)), file + ' is inlined');
     }
+    // The gameplay video and its watch page.
+    assert.equal(fs.statSync(path.join(dir, 'gameplay.mp4')).size, fs.statSync(path.join(__dirname, '..', 'assets', 'video', 'ai-detective-gameplay.mp4')).size);
+    assert.ok(fs.existsSync(path.join(dir, 'gameplay.jpg')));
+    const watch = fs.readFileSync(path.join(dir, 'video.html'), 'utf8');
+    assert.match(watch, /<video src="gameplay\.mp4" poster="gameplay\.jpg" controls playsinline/);
+    assert.doesNotMatch(watch, /https?:\/\/(?!www\.w3\.org\/2000\/svg)/, 'no outside addresses');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

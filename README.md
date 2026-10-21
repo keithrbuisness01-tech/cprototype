@@ -252,7 +252,9 @@ every case file. It sends nothing anywhere and has no teacher features.
 `npm run build:demo` writes a single self-contained page to `dist-demo/`, with
 the fonts, case files and evidence images inline. `vercel.json` tells Vercel
 to run that build and serve the page with a strict Content Security Policy, so
-the public demo rebuilds from the repo on every push.
+the public demo rebuilds from the repo on every push. The build also copies
+the 30-second gameplay video (`assets/video/`) to `/gameplay.mp4`, with a
+page that plays it at `/video`.
 
 ## Test
 
