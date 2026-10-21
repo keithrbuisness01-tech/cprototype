@@ -241,8 +241,8 @@ point), **caught** (when the student is right), **sulking** (end of a good
 session), and **impressed** (Chief rank). Each pose shows a hand-coded
 placeholder until the illustrator's file is in `assets/fib/` and named in
 `assets/fib/poses.json`. The placeholder has no mask: his eyelids, pupils,
-pink brows and mouth change with each pose. The brow and mouth color is the
-`--fib-face` token, set for every theme in `css/styles.css`. Use hand-drawn art only, not AI-generated images.
+white brows and mouth change with each pose. The brow and mouth color is the
+`--fib-face` token in `css/styles.css`. Use hand-drawn art only, not AI-generated images.
 
 ## Demo mode
 
