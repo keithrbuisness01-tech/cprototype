@@ -3,3 +3,4 @@ data/
 *.tmp
 config/approved-teachers.txt
 .env
+dist-demo/

@@ -249,10 +249,15 @@ pink brows and mouth change with each pose. The brow and mouth color is the
 Opened as a plain file or from a static host, the game runs as a demo with
 every case file. It sends nothing anywhere and has no teacher features.
 
+`npm run build:demo` writes a single self-contained page to `dist-demo/`, with
+the fonts, case files and evidence images inline. `vercel.json` tells Vercel
+to run that build and serve the page with a strict Content Security Policy, so
+the public demo rebuilds from the repo on every push.
+
 ## Test
 
 ```sh
-npm test                 # 90 tests, no network needed
+npm test                 # 96 tests, no network needed
 npm run check:network    # plays Fall 2026 and Grade 7 (twice) in Chromium and checks every request
 ```
 

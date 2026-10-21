@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js",
-    "check:network": "node scripts/check-student-network.js"
+    "check:network": "node scripts/check-student-network.js",
+    "build:demo": "node scripts/build-demo.js"
   },
   "engines": {
     "node": ">=18"
